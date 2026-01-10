@@ -1,0 +1,74 @@
+# 语音服务配置文件
+# 可通过环境变量 CONFIG_PATH 指定配置文件路径
+
+# 推理模式：local（本地推理）或 cloud（云端 API）
+inference_mode: local
+
+# 服务器配置
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+
+# ASR（语音识别）配置
+asr:
+  # 提供商：funasr, whisper, azure, aliyun, tencent, baidu
+  provider: funasr
+  # FunASR 模型：paraformer-zh, paraformer-en, conformer
+  # Whisper 模型：tiny, base, small, medium, large-v2, large-v3
+  model: paraformer-zh
+  # 语言代码：zh, en, ja, auto
+  language: zh
+  # 启用标点预测
+  enable_punctuation: true
+  # 启用流式识别（仅 FunASR 支持）
+  enable_streaming: true
+
+# TTS（语音合成）配置
+tts:
+  # 提供商：genie_tts, azure, aliyun, tencent, baidu
+  provider: genie_tts
+  # 默认角色
+  default_character: mika
+  # 采样率
+  sample_rate: 44100
+  # 输出格式：wav, mp3, ogg
+  format: wav
+
+# WebSocket 配置
+websocket:
+  # 最大消息大小（字节）
+  max_message_size: 10485760 # 10MB
+  # Ping 间隔（秒）
+  ping_interval: 30
+  # Ping 超时（秒）
+  ping_timeout: 10
+
+# 云端服务配置（云端模式需要）
+cloud:
+  # Azure Speech Services
+  azure:
+    speech_key: ''
+    speech_region: 'eastasia'
+
+  # 阿里云语音服务
+  aliyun:
+    access_key_id: ''
+    access_key_secret: ''
+    app_key: ''
+
+  # 腾讯云语音服务
+  tencent:
+    secret_id: ''
+    secret_key: ''
+    app_id: ''
+
+  # 百度云语音服务
+  baidu:
+    api_key: ''
+    secret_key: ''
+
+# 日志配置
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
