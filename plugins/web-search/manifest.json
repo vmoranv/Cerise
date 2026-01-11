@@ -1,0 +1,50 @@
+{
+  "$schema": "https://cerise.dev/schemas/plugin-manifest-v2.json",
+  "name": "web-search",
+  "version": "1.0.0",
+  "display_name": "网页搜索",
+  "description": "搜索网页内容",
+  "author": "Cerise Team",
+
+  "runtime": {
+    "language": "nodejs",
+    "entry": "index.js",
+    "command": "node index.js",
+    "transport": "stdio"
+  },
+
+  "abilities": [
+    {
+      "name": "web_search",
+      "description": "搜索网页内容",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "搜索查询"
+          },
+          "count": {
+            "type": "integer",
+            "default": 5,
+            "description": "返回结果数量"
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  ],
+
+  "permissions": ["network.http"],
+
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "api_key": {
+        "type": "string",
+        "description": "Search API Key",
+        "secret": true
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+# Cerise 核心配置文件
+
+# 推理模式
+inference_mode: local
+
+# 服务器配置
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+
+# AI Provider 配置
+ai:
+  default_provider: openai
+  default_model: gpt-4o
+
+  providers:
+    openai:
+      # api_key: ${OPENAI_API_KEY}
+      base_url: null
+
+    claude:
+      # api_key: ${ANTHROPIC_API_KEY}
+
+    gemini:
+      # api_key: ${GOOGLE_API_KEY}
+
+    ollama:
+      base_url: http://localhost:11434
+      default_model: llama3
+
+# 角色配置
+character:
+  name: Cerise
+  language: zh
+  voice_character: mika
+
+  personality:
+    openness: 0.8
+    conscientiousness: 0.6
+    extraversion: 0.7
+    agreeableness: 0.8
+    neuroticism: 0.3
+    playfulness: 0.7
+    curiosity: 0.8
+    shyness: 0.4
+
+# 情感配置
+emotion:
+  decay_enabled: true
+  transition_duration: 0.5
+
+# 能力系统配置
+abilities:
+  enable_builtin: true
+  enable_plugins: true
+  plugins_dir: plugins
+
+  permissions:
+    - system.execute
+    - network.http
+    - storage.cache
+
+# TTS 服务配置
+tts:
+  server_url: http://localhost:8001
+  default_character: mika
+  sample_rate: 44100
+
+# 日志配置
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

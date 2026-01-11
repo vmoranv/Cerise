@@ -1,0 +1,20 @@
+{
+  "name": "@cerise/plugin-sdk",
+  "version": "0.1.0",
+  "description": "Cerise Plugin SDK for Node.js",
+  "main": "cerise-plugin.js",
+  "license": "MIT",
+  "keywords": [
+    "cerise",
+    "plugin",
+    "sdk",
+    "json-rpc"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cerise/cerise"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

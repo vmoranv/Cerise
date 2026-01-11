@@ -1,0 +1,23 @@
+{
+  "$schema": "https://cerise.dev/schemas/plugin-manifest.json",
+  "name": "example-plugin",
+  "version": "1.0.0",
+  "display_name": "示例插件",
+  "description": "这是一个插件模板，展示如何创建自定义能力",
+  "author": "Your Name",
+  "category": "utility",
+  "entry_point": "plugin.py",
+  "class_name": "ExamplePlugin",
+  "permissions": [],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "example_config": {
+        "type": "string",
+        "description": "示例配置项"
+      }
+    },
+    "required": []
+  },
+  "dependencies": {}
+}
