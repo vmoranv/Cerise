@@ -6,15 +6,33 @@ Core engine for managing AI conversations with multi-provider support.
 
 import logging
 from collections.abc import AsyncIterator
+from typing import Protocol
 
 from ...abilities import AbilityContext, AbilityRegistry
 from ...infrastructure import MessageBus
 from ..memory import MemoryEngine
-from ..providers import ChatOptions, ProviderRegistry
+from ..providers import BaseProvider, ChatOptions, ProviderRegistry
 from ..providers import Message as ProviderMessage
 from .session import Session
 
 logger = logging.getLogger(__name__)
+
+
+class ProviderRegistryProtocol(Protocol):
+    """Minimal provider registry interface."""
+
+    def get(self, provider_id: str) -> BaseProvider | None:
+        """Get a provider instance by id."""
+
+
+class AbilityRegistryProtocol(Protocol):
+    """Minimal ability registry interface."""
+
+    def get_tool_schemas(self) -> list[dict]:
+        """Return tool schemas for the provider."""
+
+    async def execute(self, ability_name: str, params: dict, context: AbilityContext):
+        """Execute an ability by name."""
 
 
 class DialogueEngine:
@@ -28,6 +46,8 @@ class DialogueEngine:
         message_bus: MessageBus | None = None,
         memory_engine: MemoryEngine | None = None,
         memory_recall: bool = True,
+        provider_registry: ProviderRegistryProtocol | None = None,
+        ability_registry: AbilityRegistryProtocol | None = None,
     ):
         self.default_provider = default_provider
         self.default_model = default_model
@@ -36,6 +56,8 @@ class DialogueEngine:
         self._message_bus = message_bus or MessageBus()
         self._memory_engine = memory_engine
         self._memory_recall = memory_recall
+        self._provider_registry = provider_registry or ProviderRegistry
+        self._ability_registry = ability_registry or AbilityRegistry
 
     def create_session(
         self,
@@ -88,7 +110,7 @@ class DialogueEngine:
 
         # Get provider
         provider_name = provider or self.default_provider
-        ai_provider = ProviderRegistry.get(provider_name)
+        ai_provider = self._provider_registry.get(provider_name)
         if not ai_provider:
             raise ValueError(f"Provider not found: {provider_name}")
 
@@ -100,7 +122,7 @@ class DialogueEngine:
             model=model or self.default_model,
             temperature=temperature,
             max_tokens=max_tokens,
-            tools=AbilityRegistry.get_tool_schemas() if use_tools else None,
+            tools=self._ability_registry.get_tool_schemas() if use_tools else None,
         )
 
         # Call AI
@@ -143,7 +165,7 @@ class DialogueEngine:
 
         # Get provider
         provider_name = provider or self.default_provider
-        ai_provider = ProviderRegistry.get(provider_name)
+        ai_provider = self._provider_registry.get(provider_name)
         if not ai_provider:
             raise ValueError(f"Provider not found: {provider_name}")
 
@@ -190,7 +212,7 @@ class DialogueEngine:
                 permissions=["system.execute", "network.http"],  # Default permissions
             )
 
-            result = await AbilityRegistry.execute(tool_name, tool_args, context)
+            result = await self._ability_registry.execute(tool_name, tool_args, context)
 
             # Add tool result to session
             session.add_tool_result(
@@ -202,7 +224,7 @@ class DialogueEngine:
             results.append(result)
 
         # Get follow-up response from AI
-        ai_provider = ProviderRegistry.get(provider_name)
+        ai_provider = self._provider_registry.get(provider_name)
         messages = [ProviderMessage(role=m["role"], content=m["content"]) for m in session.get_context_messages()]
 
         final_response = await ai_provider.chat(messages, options)

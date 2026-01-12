@@ -16,3 +16,5 @@ repos:
       # Run the formatter
       - id: ruff-format
         types_or: [python, pyi]
+        # Pre-push only: uvx pre-commit install --hook-type pre-push
+        stages: [push]

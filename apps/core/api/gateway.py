@@ -8,16 +8,14 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.dialogue import Session
-from ..ai.emotion import EmotionConfigManager
-from ..ai.memory import MemoryEngine, MemoryEventHandler, load_memory_config
 from ..character import EmotionStateMachine, PersonalityModel
-from ..infrastructure import ConfigManager, MessageBus, StateStore
+from .container import AppServices, build_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 
@@ -63,65 +61,19 @@ class HealthResponse(BaseModel):
     version: str
 
 
-# Global instances
-dialogue_engine: DialogueEngine | None = None
-emotion_analyzer: EmotionAnalyzer | None = None
-emotion_manager: EmotionConfigManager | None = None
-emotion_state: EmotionStateMachine | None = None
-personality: PersonalityModel | None = None
-message_bus: MessageBus | None = None
-state_store: StateStore | None = None
-memory_engine: MemoryEngine | None = None
-memory_events: MemoryEventHandler | None = None
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan manager"""
-    global dialogue_engine, emotion_analyzer, emotion_manager, emotion_state, personality, message_bus, state_store
-    global memory_engine, memory_events
-
     logger.info("Starting Cerise API server...")
-
-    # Initialize components
-    message_bus = MessageBus()
-    await message_bus.start()
-
-    state_store = StateStore()
-
-    # Initialize config
-    _config = ConfigManager()
-
-    # Create default personality
-    personality = PersonalityModel.create_default()
-
-    # Initialize memory components
-    memory_engine = MemoryEngine(config=load_memory_config(), bus=message_bus)
-    await memory_engine.prepare()
-    memory_events = MemoryEventHandler(memory_engine, message_bus)
-    memory_events.attach()
-
-    # Initialize dialogue engine
-    dialogue_engine = DialogueEngine(
-        default_provider="openai",
-        default_model="gpt-4o",
-        system_prompt=personality.generate_system_prompt(),
-        message_bus=message_bus,
-        memory_engine=memory_engine,
-    )
-
-    # Initialize emotion components
-    emotion_manager = EmotionConfigManager(bus=message_bus)
-    emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
-    emotion_state = EmotionStateMachine()
-
+    app.state.services = await build_services()
     logger.info("Cerise API server started")
 
     yield
 
-    # Cleanup
     logger.info("Shutting down Cerise API server...")
-    await message_bus.stop()
+    services = getattr(app.state, "services", None)
+    if services:
+        await shutdown_services(services)
     logger.info("Cerise API server stopped")
 
 
@@ -148,6 +100,29 @@ def create_app() -> FastAPI:
     return app
 
 
+def get_services(request: Request) -> AppServices:
+    services = getattr(request.app.state, "services", None)
+    if not services:
+        raise HTTPException(status_code=500, detail="Services not initialized")
+    return services
+
+
+def get_dialogue_engine(services: AppServices = Depends(get_services)) -> DialogueEngine:
+    return services.dialogue_engine
+
+
+def get_emotion_analyzer(services: AppServices = Depends(get_services)) -> EmotionAnalyzer:
+    return services.emotion_analyzer
+
+
+def get_emotion_state(services: AppServices = Depends(get_services)) -> EmotionStateMachine:
+    return services.emotion_state
+
+
+def get_personality(services: AppServices = Depends(get_services)) -> PersonalityModel:
+    return services.personality
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
@@ -155,14 +130,12 @@ async def health_check():
 
 
 @router.post("/sessions", response_model=SessionResponse)
-async def create_session(request: SessionCreate):
+async def create_session(
+    request: SessionCreate,
+    dialogue_engine: DialogueEngine = Depends(get_dialogue_engine),
+    personality: PersonalityModel = Depends(get_personality),
+):
     """Create a new conversation session"""
-    global dialogue_engine, personality
-
-    if not dialogue_engine:
-        raise HTTPException(status_code=500, detail="Dialogue engine not initialized")
-
-    # Use custom personality or default
     system_prompt = personality.generate_system_prompt() if personality else ""
 
     session = dialogue_engine.create_session(
@@ -178,13 +151,11 @@ async def create_session(request: SessionCreate):
 
 
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
-async def get_session(session_id: str):
+async def get_session(
+    session_id: str,
+    dialogue_engine: DialogueEngine = Depends(get_dialogue_engine),
+):
     """Get session info"""
-    global dialogue_engine
-
-    if not dialogue_engine:
-        raise HTTPException(status_code=500, detail="Dialogue engine not initialized")
-
     session = dialogue_engine.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -197,27 +168,24 @@ async def get_session(session_id: str):
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: str):
+async def delete_session(
+    session_id: str,
+    dialogue_engine: DialogueEngine = Depends(get_dialogue_engine),
+):
     """Delete a session"""
-    global dialogue_engine
-
-    if not dialogue_engine:
-        raise HTTPException(status_code=500, detail="Dialogue engine not initialized")
-
     if dialogue_engine.delete_session(session_id):
         return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="Session not found")
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    dialogue_engine: DialogueEngine = Depends(get_dialogue_engine),
+    emotion_analyzer: EmotionAnalyzer = Depends(get_emotion_analyzer),
+    emotion_state: EmotionStateMachine = Depends(get_emotion_state),
+):
     """Send a chat message"""
-    global dialogue_engine, emotion_analyzer, emotion_state
-
-    if not dialogue_engine:
-        raise HTTPException(status_code=500, detail="Dialogue engine not initialized")
-
-    # Get or create session
     session = None
     if request.session_id:
         session = dialogue_engine.get_session(request.session_id)
@@ -236,15 +204,14 @@ async def chat(request: ChatRequest):
         )
 
         # Analyze emotion
-        if emotion_analyzer and emotion_state:
-            emotion_result = emotion_analyzer.analyze(response)
-            emotion_state.set_emotion(
-                emotion_result.primary_emotion.value,
-                intensity=emotion_result.confidence,
-            )
+        emotion_result = emotion_analyzer.analyze(response)
+        emotion_state.set_emotion(
+            emotion_result.primary_emotion.value,
+            intensity=emotion_result.confidence,
+        )
 
-        current_emotion = emotion_state.current_state.value if emotion_state else "neutral"
-        current_intensity = emotion_state.current_intensity if emotion_state else 1.0
+        current_emotion = emotion_state.current_state.value
+        current_intensity = emotion_state.current_intensity
 
         return ChatResponse(
             response=response,
@@ -261,24 +228,17 @@ async def chat(request: ChatRequest):
 
 
 @router.get("/emotion")
-async def get_emotion():
+async def get_emotion(emotion_state: EmotionStateMachine = Depends(get_emotion_state)):
     """Get current emotion state"""
-    global emotion_state
-
-    if not emotion_state:
-        return {"emotion": "neutral", "intensity": 1.0}
-
     return emotion_state.get_animation_params()
 
 
 @router.post("/emotion")
-async def set_emotion(request: EmotionUpdate):
+async def set_emotion(
+    request: EmotionUpdate,
+    emotion_state: EmotionStateMachine = Depends(get_emotion_state),
+):
     """Manually set emotion state"""
-    global emotion_state
-
-    if not emotion_state:
-        raise HTTPException(status_code=500, detail="Emotion state not initialized")
-
     emotion_state.set_emotion(request.emotion, request.intensity)
     return emotion_state.get_animation_params()
 
@@ -286,10 +246,18 @@ async def set_emotion(request: EmotionUpdate):
 @router.websocket("/ws/chat")
 async def websocket_chat(websocket: WebSocket):
     """WebSocket endpoint for streaming chat"""
-    global dialogue_engine, emotion_analyzer, emotion_state
-
     await websocket.accept()
     logger.info("WebSocket connection accepted")
+
+    services = getattr(websocket.app.state, "services", None)
+    if not services:
+        await websocket.send_json({"type": "error", "message": "Services not initialized"})
+        await websocket.close(code=1011)
+        return
+
+    dialogue_engine = services.dialogue_engine
+    emotion_analyzer = services.emotion_analyzer
+    emotion_state = services.emotion_state
 
     session: Session | None = None
 
@@ -299,18 +267,17 @@ async def websocket_chat(websocket: WebSocket):
             action = data.get("action", "chat")
 
             if action == "create_session":
-                if dialogue_engine:
-                    session = dialogue_engine.create_session()
-                    await websocket.send_json(
-                        {
-                            "type": "session_created",
-                            "session_id": session.id,
-                        }
-                    )
+                session = dialogue_engine.create_session()
+                await websocket.send_json(
+                    {
+                        "type": "session_created",
+                        "session_id": session.id,
+                    }
+                )
 
             elif action == "chat":
                 message = data.get("message", "")
-                if not message or not session or not dialogue_engine:
+                if not message or not session:
                     await websocket.send_json({"type": "error", "message": "No message or session"})
                     continue
 
@@ -328,17 +295,16 @@ async def websocket_chat(websocket: WebSocket):
                     await websocket.send_json({"type": "chunk", "content": chunk})
 
                 # Analyze final emotion
-                if emotion_analyzer and emotion_state:
-                    emotion_result = emotion_analyzer.analyze(full_response)
-                    emotion_state.set_emotion(
-                        emotion_result.primary_emotion.value,
-                        intensity=emotion_result.confidence,
-                    )
+                emotion_result = emotion_analyzer.analyze(full_response)
+                emotion_state.set_emotion(
+                    emotion_result.primary_emotion.value,
+                    intensity=emotion_result.confidence,
+                )
 
                 await websocket.send_json(
                     {
                         "type": "end",
-                        "emotion": emotion_state.current_state.value if emotion_state else "neutral",
+                        "emotion": emotion_state.current_state.value,
                     }
                 )
 
