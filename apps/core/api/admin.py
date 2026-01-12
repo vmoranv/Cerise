@@ -77,13 +77,46 @@ async def update_config(request: ConfigUpdateRequest) -> dict:
 
 
 @router.get("/providers")
-async def list_providers() -> dict:
+async def list_providers(include: str | None = None) -> dict:
     """List all configured providers"""
     loader = get_config_loader()
     config = loader.get_providers_config()
+    providers = [p.model_dump() for p in config.providers]
+
+    include_set = {item.strip().lower() for item in include.split(",") if item.strip()} if include else set()
+    if include_set & {"models", "capabilities"}:
+        from ..ai.providers import ProviderRegistry
+
+        if not ProviderRegistry._initialized:
+            ProviderRegistry.load_from_config()
+
+        for provider in providers:
+            provider_id = provider.get("id", "")
+            instance = ProviderRegistry.get(provider_id) if provider_id else None
+            info = ProviderRegistry.get_provider_info(provider_id) if instance else None
+            if "models" in include_set:
+                provider["models"] = info["models"] if info else []
+            if "capabilities" in include_set:
+                provider["capabilities"] = info["capabilities"] if info else None
+
     return {
         "default": config.default,
-        "providers": [p.model_dump() for p in config.providers],
+        "providers": providers,
+    }
+
+
+@router.get("/providers/{provider_id}/models")
+async def list_provider_models(provider_id: str) -> dict:
+    """List available models for a provider"""
+    from ..ai.providers import ProviderRegistry
+
+    provider = ProviderRegistry.get(provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+
+    return {
+        "provider_id": provider_id,
+        "models": provider.available_models,
     }
 
 

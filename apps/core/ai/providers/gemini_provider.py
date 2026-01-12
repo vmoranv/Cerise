@@ -19,15 +19,20 @@ class GeminiProvider(BaseProvider):
     """Google Gemini API provider"""
 
     name = "gemini"
-    available_models = [
+    DEFAULT_MODELS = [
         "gemini-1.5-pro",
         "gemini-1.5-flash",
         "gemini-pro",
     ]
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, models: list[str] | None = None):
         self.api_key = api_key
+        self._available_models = models or self.DEFAULT_MODELS
         self._client = None
+
+    @property
+    def available_models(self) -> list[str]:
+        return self._available_models
 
     @property
     def client(self):

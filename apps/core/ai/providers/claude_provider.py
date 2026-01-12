@@ -19,16 +19,21 @@ class ClaudeProvider(BaseProvider):
     """Anthropic Claude API provider"""
 
     name = "claude"
-    available_models = [
+    DEFAULT_MODELS = [
         "claude-3-opus-20240229",
         "claude-3-sonnet-20240229",
         "claude-3-haiku-20240307",
         "claude-3-5-sonnet-20241022",
     ]
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, models: list[str] | None = None):
         self.api_key = api_key
+        self._available_models = models or self.DEFAULT_MODELS
         self._client = None
+
+    @property
+    def available_models(self) -> list[str]:
+        return self._available_models
 
     @property
     def client(self):

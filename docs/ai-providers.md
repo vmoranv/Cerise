@@ -20,22 +20,22 @@ classDiagram
     
     class OpenAIProvider {
         +name = "openai"
-        +models: ["gpt-4o", "gpt-4", "gpt-3.5-turbo"]
+        +models: config.models | DEFAULT_MODELS
     }
     
     class ClaudeProvider {
         +name = "claude"
-        +models: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+        +models: config.models | DEFAULT_MODELS
     }
     
     class GeminiProvider {
         +name = "gemini"
-        +models: ["gemini-pro", "gemini-ultra"]
+        +models: config.models | DEFAULT_MODELS
     }
     
     class OllamaProvider {
         +name = "ollama"
-        +models: [dynamic local models]
+        +models: dynamic local models
     }
     
     BaseProvider <|-- OpenAIProvider
@@ -293,26 +293,48 @@ class ProviderRegistry:
 ## 配置格式
 
 ```yaml
-# config.yaml
+# ~/.cerise/config.yaml
 
 ai:
-  default_provider: openai
+  default_provider: openai-default
   default_model: gpt-4o
-  
-  providers:
-    openai:
+  temperature: 0.7
+  max_tokens: 2048
+```
+
+`config.yaml` 仅保存全局默认值，Provider 列表与连接信息放在 `providers.yaml`。建议 `ai.default_provider` 与 `providers.yaml` 的 `default` 保持一致（provider id）。
+
+```yaml
+# ~/.cerise/providers.yaml
+
+default: openai-default
+providers:
+  - id: openai-default
+    type: openai
+    name: OpenAI
+    enabled: true
+    config:
       api_key: ${OPENAI_API_KEY}
       base_url: null  # 可选，用于代理
-      
-    claude:
+      organization: null
+      model: gpt-4o  # 可选，连接测试默认模型
+      models: ["gpt-4o", "gpt-4o-mini"]  # 可选，覆盖 Provider 的默认模型列表
+  
+  - id: claude-main
+    type: claude
+    name: Claude
+    enabled: true
+    config:
       api_key: ${ANTHROPIC_API_KEY}
-      
-    gemini:
+      models: ["claude-3-5-sonnet-20241022"]
+  
+  - id: gemini-main
+    type: gemini
+    name: Gemini
+    enabled: true
+    config:
       api_key: ${GOOGLE_API_KEY}
-      
-    ollama:
-      base_url: http://localhost:11434
-      default_model: llama3
+      models: ["gemini-1.5-pro"]
 ```
 
 ---
@@ -342,3 +364,31 @@ print(response.content)
 async for chunk in provider.stream_chat(messages, options):
     print(chunk, end="", flush=True)
 ```
+
+---
+
+## 管理端点
+
+- `GET /admin/providers` 列出所有配置的 Provider
+- `GET /admin/providers?include=models,capabilities` 可选合并模型与能力信息
+- `GET /admin/providers/{provider_id}/models` 获取 Provider 的可用模型列表
+- `POST /admin/providers/{provider_id}/test` 连接测试
+- `POST /admin/providers/{provider_id}/set-default` 设置默认 Provider
+
+---
+
+## 架构分析记录
+
+### 2026-01-11
+
+- 变化目标: 把 Provider 模型列表从代码硬编码解耦到配置，同时补齐模型列表端点。
+- 影响范围: Provider 实现、Registry 的连接测试、Admin API。
+- 耦合分析: Provider 内部只依赖自身初始化参数，Registry 仅在测试时读取配置并选择模型，API 层只暴露查询接口。
+- 风险点: 如果配置未提供 `model` 或 `models` 且 Provider 无默认模型，将导致测试报错并返回明确提示。
+
+### 2026-01-12
+
+- 变化目标: 文档配置示例与实际 `providers.yaml` 对齐，同时提供可选聚合的 Provider 列表返回格式。
+- 影响范围: 文档、Admin API 列表接口。
+- 耦合分析: 默认返回仍为静态配置，显式 include 才触发运行时 Provider 信息读取。
+- 风险点: include 请求可能触发 Provider 实例化，需保证依赖可选且失败时返回空值。

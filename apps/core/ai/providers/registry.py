@@ -192,6 +192,23 @@ class ProviderRegistry:
         }
 
     @classmethod
+    def _resolve_model_for_provider(cls, provider_id: str, instance: BaseProvider) -> str | None:
+        """Pick a model using provider config first, then available models."""
+        config = cls._configs.get(provider_id)
+        if config:
+            configured_model = config.config.get("model")
+            if isinstance(configured_model, str) and configured_model:
+                return configured_model
+            configured_models = config.config.get("models")
+            if isinstance(configured_models, list) and configured_models:
+                first_model = configured_models[0]
+                if isinstance(first_model, str) and first_model:
+                    return first_model
+        if instance.available_models:
+            return instance.available_models[0]
+        return None
+
+    @classmethod
     async def test_connection(cls, provider_id: str) -> dict:
         """
         Test provider connection by sending a simple request.
@@ -205,6 +222,9 @@ class ProviderRegistry:
             return {"status": "error", "error": "Provider not found"}
 
         instance = cls._instances[provider_id]
+        model = cls._resolve_model_for_provider(provider_id, instance)
+        if not model:
+            return {"status": "error", "error": "No model configured for provider"}
 
         try:
             start = time.perf_counter()
@@ -212,7 +232,7 @@ class ProviderRegistry:
             # Send a minimal test message
             messages = [Message(role="user", content="Hi")]
             options = ChatOptions(
-                model=instance.available_models[0] if instance.available_models else "gpt-4o",
+                model=model,
                 max_tokens=5,
                 temperature=0,
             )

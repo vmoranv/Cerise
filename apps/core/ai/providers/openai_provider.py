@@ -19,7 +19,7 @@ class OpenAIProvider(BaseProvider):
     """OpenAI API provider"""
 
     name = "openai"
-    available_models = [
+    DEFAULT_MODELS = [
         "gpt-4o",
         "gpt-4o-mini",
         "gpt-4-turbo",
@@ -32,11 +32,17 @@ class OpenAIProvider(BaseProvider):
         api_key: str,
         base_url: str | None = None,
         organization: str | None = None,
+        models: list[str] | None = None,
     ):
         self.api_key = api_key
         self.base_url = base_url
         self.organization = organization
+        self._available_models = models or self.DEFAULT_MODELS
         self._client = None
+
+    @property
+    def available_models(self) -> list[str]:
+        return self._available_models
 
     @property
     def client(self):
