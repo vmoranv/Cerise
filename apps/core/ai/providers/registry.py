@@ -75,15 +75,55 @@ class ProviderRegistry:
     @classmethod
     def _register_builtin_providers(cls) -> None:
         """Register built-in provider types"""
+        from .compat_providers import (
+            DeepSeekProvider,
+            FireworksProvider,
+            GroqProvider,
+            LMStudioProvider,
+            MistralProvider,
+            MoonshotProvider,
+            OllamaProvider,
+            OpenRouterProvider,
+            QwenProvider,
+            TogetherProvider,
+            XAIProvider,
+            ZhipuProvider,
+        )
+        from .embedding_providers import GeminiEmbeddingProvider, OpenAIEmbeddingProvider
         from .openai_provider import OpenAIProvider
+        from .rerank_http_provider import RerankHttpProvider
+        from .rerank_providers import (
+            BailianRerankProvider,
+            VllmRerankProvider,
+            XinferenceRerankProvider,
+        )
 
         cls._provider_types["openai"] = OpenAIProvider
+        cls._provider_types["rerank_http"] = RerankHttpProvider
+        cls._provider_types["openai_embedding"] = OpenAIEmbeddingProvider
+        cls._provider_types["gemini_embedding"] = GeminiEmbeddingProvider
+        cls._provider_types["vllm_rerank"] = VllmRerankProvider
+        cls._provider_types["xinference_rerank"] = XinferenceRerankProvider
+        cls._provider_types["bailian_rerank"] = BailianRerankProvider
+        cls._provider_types["groq"] = GroqProvider
+        cls._provider_types["xai"] = XAIProvider
+        cls._provider_types["zhipu"] = ZhipuProvider
+        cls._provider_types["deepseek"] = DeepSeekProvider
+        cls._provider_types["moonshot"] = MoonshotProvider
+        cls._provider_types["qwen"] = QwenProvider
+        cls._provider_types["mistral"] = MistralProvider
+        cls._provider_types["together"] = TogetherProvider
+        cls._provider_types["fireworks"] = FireworksProvider
+        cls._provider_types["openrouter"] = OpenRouterProvider
+        cls._provider_types["ollama"] = OllamaProvider
+        cls._provider_types["lmstudio"] = LMStudioProvider
 
         # Lazy import other providers
         with contextlib.suppress(ImportError):
             from .claude_provider import ClaudeProvider
 
             cls._provider_types["claude"] = ClaudeProvider
+            cls._provider_types["anthropic"] = ClaudeProvider
 
         with contextlib.suppress(ImportError):
             from .gemini_provider import GeminiProvider
@@ -184,9 +224,12 @@ class ProviderRegistry:
             "enabled": config.enabled if config else True,
             "models": instance.available_models,
             "capabilities": {
+                "chat": capabilities.chat,
                 "streaming": capabilities.streaming,
                 "function_calling": capabilities.function_calling,
                 "vision": capabilities.vision,
+                "embeddings": capabilities.embeddings,
+                "rerank": capabilities.rerank,
                 "max_context_length": capabilities.max_context_length,
             },
         }
@@ -222,6 +265,21 @@ class ProviderRegistry:
             return {"status": "error", "error": "Provider not found"}
 
         instance = cls._instances[provider_id]
+        capabilities = instance.get_capabilities()
+        if not capabilities.chat:
+            if capabilities.embeddings:
+                try:
+                    await instance.embed(["ping"])
+                    return {"status": "ok", "latency_ms": 0.0, "model": "embedding"}
+                except Exception as e:
+                    return {"status": "error", "error": str(e)}
+            if capabilities.rerank:
+                try:
+                    await instance.rerank("ping", ["ping"])
+                    return {"status": "ok", "latency_ms": 0.0, "model": "rerank"}
+                except Exception as e:
+                    return {"status": "error", "error": str(e)}
+            return {"status": "error", "error": "Provider does not support chat/embed/rerank"}
         model = cls._resolve_model_for_provider(provider_id, instance)
         if not model:
             return {"status": "error", "error": "No model configured for provider"}

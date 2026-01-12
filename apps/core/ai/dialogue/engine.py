@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 
 from ...abilities import AbilityContext, AbilityRegistry
 from ...infrastructure import MessageBus
+from ..memory import MemoryEngine
 from ..providers import ChatOptions, ProviderRegistry
 from ..providers import Message as ProviderMessage
 from .session import Session
@@ -24,12 +25,17 @@ class DialogueEngine:
         default_provider: str = "openai",
         default_model: str = "gpt-4o",
         system_prompt: str = "",
+        message_bus: MessageBus | None = None,
+        memory_engine: MemoryEngine | None = None,
+        memory_recall: bool = True,
     ):
         self.default_provider = default_provider
         self.default_model = default_model
         self.default_system_prompt = system_prompt
         self._sessions: dict[str, Session] = {}
-        self._message_bus = MessageBus()
+        self._message_bus = message_bus or MessageBus()
+        self._memory_engine = memory_engine
+        self._memory_recall = memory_recall
 
     def create_session(
         self,
@@ -87,7 +93,7 @@ class DialogueEngine:
             raise ValueError(f"Provider not found: {provider_name}")
 
         # Prepare messages
-        messages = [ProviderMessage(role=m["role"], content=m["content"]) for m in session.get_context_messages()]
+        messages = await self._build_context_messages(session, user_message)
 
         # Prepare options
         options = ChatOptions(
@@ -142,7 +148,7 @@ class DialogueEngine:
             raise ValueError(f"Provider not found: {provider_name}")
 
         # Prepare messages
-        messages = [ProviderMessage(role=m["role"], content=m["content"]) for m in session.get_context_messages()]
+        messages = await self._build_context_messages(session, user_message)
 
         options = ChatOptions(
             model=model or self.default_model,
@@ -209,3 +215,24 @@ class DialogueEngine:
     def get_all_sessions(self) -> list[Session]:
         """Get all active sessions"""
         return list(self._sessions.values())
+
+    async def _build_context_messages(self, session: Session, query: str) -> list[ProviderMessage]:
+        context = session.get_context_messages()
+        memory_context = ""
+        if self._memory_engine and self._memory_recall:
+            try:
+                results = await self._memory_engine.recall(
+                    query,
+                    limit=self._memory_engine.config.recall.top_k if self._memory_engine.config else 5,
+                    session_id=session.id,
+                )
+                memory_context = self._memory_engine.format_context(results)
+            except Exception:  # pragma: no cover - recall is optional
+                logger.exception("Memory recall failed")
+        if memory_context:
+            memory_message = {"role": "system", "content": memory_context}
+            if context and context[0].get("role") == "system":
+                context = [context[0], memory_message] + context[1:]
+            else:
+                context = [memory_message] + context
+        return [ProviderMessage(role=m["role"], content=m["content"]) for m in context]

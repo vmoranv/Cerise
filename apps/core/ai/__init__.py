@@ -22,6 +22,14 @@ def __getattr__(name: str):
         from .emotion import EmotionAnalyzer
 
         return EmotionAnalyzer
+    elif name == "MemoryEngine":
+        from .memory import MemoryEngine
+
+        return MemoryEngine
+    elif name == "MemoryEventHandler":
+        from .memory import MemoryEventHandler
+
+        return MemoryEventHandler
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -29,5 +37,7 @@ __all__ = [
     "DialogueEngine",
     "Session",
     "EmotionAnalyzer",
+    "MemoryEngine",
+    "MemoryEventHandler",
     "ProviderRegistry",
 ]

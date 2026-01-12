@@ -116,7 +116,8 @@ class ConfigLoader:
         config_path = self.data_dir / "providers.yaml"
 
         if not config_path.exists():
-            self._create_default_providers_config(config_path)
+            self._providers_config = ProvidersConfig()
+            return self._providers_config
 
         try:
             with open(config_path, encoding="utf-8") as f:

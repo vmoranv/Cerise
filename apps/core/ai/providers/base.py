@@ -46,9 +46,12 @@ class ChatResponse:
 class ProviderCapabilities:
     """Capabilities of a provider"""
 
+    chat: bool = True
     streaming: bool = True
     function_calling: bool = False
     vision: bool = False
+    embeddings: bool = False
+    rerank: bool = False
     max_context_length: int = 4096
 
 
@@ -93,3 +96,17 @@ class BaseProvider(ABC):
     async def health_check(self) -> bool:
         """Check if provider is healthy"""
         return True
+
+    async def embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
+        """Optional: embedding endpoint."""
+        raise NotImplementedError("Embedding is not supported by this provider")
+
+    async def rerank(
+        self,
+        query: str,
+        documents: list[str],
+        model: str | None = None,
+        top_k: int | None = None,
+    ) -> list[tuple[int, float]]:
+        """Optional: rerank endpoint."""
+        raise NotImplementedError("Rerank is not supported by this provider")

@@ -8,6 +8,8 @@ Cerise 使用 `~/.cerise/` 目录存储所有用户配置，实现代码与配�
 ~/.cerise/
 ├── config.yaml           # 主配置
 ├── providers.yaml        # AI Provider 配置
+├── memory.yaml           # 记忆系统配置
+├── emotion.yaml          # 情感系统配置
 ├── plugins.json          # 已安装插件列表
 ├── characters/           # 角色配置
 │   └── default.yaml
@@ -62,6 +64,10 @@ providers:
       api_key: ${OPENAI_API_KEY}
       base_url: null
       model: gpt-4o
+      custom_headers: {}   # 可选
+      extra_body: {}       # 可选
+      api_version: ""      # Azure OpenAI 可选
+      azure_endpoint: ""   # Azure OpenAI 可选
 
   - id: claude-1
     type: claude
@@ -76,6 +82,147 @@ providers:
     enabled: false
     config:
       api_key: ${GOOGLE_API_KEY}
+
+  - id: rerank-1
+    type: rerank_http
+    name: Rerank (vLLM)
+    enabled: false
+    config:
+      base_url: http://127.0.0.1:8000
+      api_key: ""
+      model: BAAI/bge-reranker-base
+
+  - id: openai-embed
+    type: openai_embedding
+    name: OpenAI Embedding
+    enabled: false
+    config:
+      api_key: ${OPENAI_API_KEY}
+      model: text-embedding-3-small
+
+  - id: gemini-embed
+    type: gemini_embedding
+    name: Gemini Embedding
+    enabled: false
+    config:
+      api_key: ${GOOGLE_API_KEY}
+      model: gemini-embedding-exp-03-07
+
+  - id: vllm-rerank
+    type: vllm_rerank
+    name: vLLM Rerank
+    enabled: false
+    config:
+      base_url: http://127.0.0.1:8000
+      api_key: ""
+      model: BAAI/bge-reranker-base
+
+  - id: xinference-rerank
+    type: xinference_rerank
+    name: Xinference Rerank
+    enabled: false
+    config:
+      base_url: http://127.0.0.1:9997
+      api_key: ""
+      model: BAAI/bge-reranker-base
+
+  - id: bailian-rerank
+    type: bailian_rerank
+    name: Bailian Rerank
+    enabled: false
+    config:
+      api_key: ${DASHSCOPE_API_KEY}
+      model: qwen3-rerank
+
+  - id: groq-1
+    type: groq
+    name: Groq Llama
+    enabled: false
+    config:
+      api_key: ${GROQ_API_KEY}
+
+  - id: xai-1
+    type: xai
+    name: xAI Grok
+    enabled: false
+    config:
+      api_key: ${XAI_API_KEY}
+      xai_native_search: false
+
+  - id: zhipu-1
+    type: zhipu
+    name: Zhipu GLM
+    enabled: false
+    config:
+      api_key: ${ZHIPU_API_KEY}
+
+  - id: deepseek-1
+    type: deepseek
+    name: DeepSeek
+    enabled: false
+    config:
+      api_key: ${DEEPSEEK_API_KEY}
+
+  - id: moonshot-1
+    type: moonshot
+    name: Moonshot
+    enabled: false
+    config:
+      api_key: ${MOONSHOT_API_KEY}
+
+  - id: qwen-1
+    type: qwen
+    name: Qwen
+    enabled: false
+    config:
+      api_key: ${DASHSCOPE_API_KEY}
+
+  - id: mistral-1
+    type: mistral
+    name: Mistral
+    enabled: false
+    config:
+      api_key: ${MISTRAL_API_KEY}
+
+  - id: together-1
+    type: together
+    name: Together
+    enabled: false
+    config:
+      api_key: ${TOGETHER_API_KEY}
+
+  - id: fireworks-1
+    type: fireworks
+    name: Fireworks
+    enabled: false
+    config:
+      api_key: ${FIREWORKS_API_KEY}
+
+  - id: openrouter-1
+    type: openrouter
+    name: OpenRouter
+    enabled: false
+    config:
+      api_key: ${OPENROUTER_API_KEY}
+      custom_headers:
+        HTTP-Referer: https://example.com
+        X-Title: Cerise
+
+  - id: ollama-1
+    type: ollama
+    name: Ollama Local
+    enabled: false
+    config:
+      api_key: ""
+      base_url: http://localhost:11434/v1
+
+  - id: lmstudio-1
+    type: lmstudio
+    name: LM Studio Local
+    enabled: false
+    config:
+      api_key: ""
+      base_url: http://localhost:1234/v1
 ```
 
 **环境变量支持**: 使用 `${VAR_NAME}` 语法引用环境变量。
@@ -99,6 +246,22 @@ voice:
   provider: local
 
 system_prompt_template: ""
+
+# 可选：情感层覆盖配置
+emotion:
+  lexicon:
+    keywords:
+      happy:
+        - ["好耶", 0.9]
+        - ["耶", 0.7]
+  rules:
+    custom:
+      - name: "teasing"
+        emotion: "excited"
+        weight: 0.6
+        patterns: ["(?i)逗你玩", "(?i)开个玩笑"]
+        kind: "regex"
+        priority: 55
 ```
 
 ### plugins.json - 插件注册表
@@ -117,6 +280,102 @@ system_prompt_template: ""
   ]
 }
 ```
+
+### memory.yaml - 记忆系统配置
+
+```yaml
+store:
+  backend: sqlite         # sqlite | state | memory
+  sqlite_path: ""         # 为空则使用 ~/.cerise/memory/memory.db
+  state_path: ""          # 为空则使用 ~/.cerise/memory/state.json
+  ttl_seconds: 86400      # 记忆 TTL（秒）
+  max_records_per_session: 200
+
+sparse:
+  enabled: true
+  top_k: 5
+
+vector:
+  enabled: true
+  provider: faiss         # faiss | chroma | numpy
+  embedding_backend: hash # hash | provider
+  embedding_dim: 256
+  embedding_provider: ""  # providers.yaml 中的 provider id
+  embedding_model: ""     # 可选覆盖
+  top_k: 5
+  persist_path: ""        # Chroma 持久化目录（空则使用 ~/.cerise/memory/vectors）
+
+kg:
+  enabled: true
+  top_k: 3
+  auto_extract: true
+
+compression:
+  enabled: true
+  threshold: 80
+  window: 40
+  max_chars: 1000
+
+recall:
+  enabled: true
+  top_k: 8
+  min_score: 0.05
+  rrf_k: 60
+
+rerank:
+  enabled: true
+  top_k: 8
+  weight: 0.35
+  provider_id: ""  # 可选重排 provider id
+  model: ""
+
+association:
+  enabled: true
+  max_hops: 1
+  top_k: 5
+  max_entities: 12
+  include_facts: true
+  expand_from_query: true
+  expand_from_results: true
+  min_score: 0.02
+```
+
+### emotion.yaml - 情感系统配置
+
+```yaml
+lexicon:
+  path: ""  # 可指定独立词典文件，例如 "lexicon/default.yaml"
+  keywords:
+    happy:
+      - ["开心", 1.0]
+      - ["好耶", 0.9]
+    sad:
+      - ["难过", 1.0]
+  intensifiers: ["很", "特别", "超级"]
+  diminishers: ["有点", "稍微"]
+  negations: ["不", "没", "没有"]
+  positive_hints: ["喜欢", "满意"]
+  negative_hints: ["讨厌", "糟糕"]
+
+rules:
+  enabled: ["sentiment_hint", "keyword", "punctuation", "emoticon"]
+  disabled: []
+  custom:
+    - name: "tease"
+      emotion: "excited"
+      weight: 0.6
+      patterns: ["(?i)逗你玩", "(?i)开个玩笑"]
+      kind: "regex"
+      priority: 55
+
+plugins_dir: ""          # 默认 ~/.cerise/plugins
+plugin_glob: "**/emotion*.yaml"
+plugins:
+  - "community/emotion_pack.yaml"
+```
+
+> 插件词典/规则：放在 `~/.cerise/plugins/**/emotion*.yaml`，会自动发现并合并。
+> 示例文件位于 `docs/config/memory.yaml` 和 `docs/config/emotion.yaml`，可直接复制到 `~/.cerise/`。
 
 ## WebUI 管理 API
 
@@ -299,7 +558,7 @@ await installer.uninstall("my-plugin")
 
 ## 注意事项
 
-1. **首次启动**: 如果配置文件不存在，系统会自动创建默认配置
+1. **首次启动**: 系统只会自动创建 `config.yaml`。`providers.yaml`、`memory.yaml`、`emotion.yaml` 需要手动添加。
 2. **环境变量**: 推荐使用 `${VAR}` 语法引用敏感信息
 3. **热重载**: 修改配置后调用 `ProviderRegistry.reload()` 可热重载
 4. **私有仓库**: 当前只支持公共 GitHub 仓库，私有仓库请手动下载 zip 后上传

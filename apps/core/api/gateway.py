@@ -14,6 +14,8 @@ from pydantic import BaseModel
 
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.dialogue import Session
+from ..ai.emotion import EmotionConfigManager
+from ..ai.memory import MemoryEngine, MemoryEventHandler, load_memory_config
 from ..character import EmotionStateMachine, PersonalityModel
 from ..infrastructure import ConfigManager, MessageBus, StateStore
 
@@ -64,16 +66,20 @@ class HealthResponse(BaseModel):
 # Global instances
 dialogue_engine: DialogueEngine | None = None
 emotion_analyzer: EmotionAnalyzer | None = None
+emotion_manager: EmotionConfigManager | None = None
 emotion_state: EmotionStateMachine | None = None
 personality: PersonalityModel | None = None
 message_bus: MessageBus | None = None
 state_store: StateStore | None = None
+memory_engine: MemoryEngine | None = None
+memory_events: MemoryEventHandler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan manager"""
-    global dialogue_engine, emotion_analyzer, emotion_state, personality, message_bus, state_store
+    global dialogue_engine, emotion_analyzer, emotion_manager, emotion_state, personality, message_bus, state_store
+    global memory_engine, memory_events
 
     logger.info("Starting Cerise API server...")
 
@@ -89,15 +95,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Create default personality
     personality = PersonalityModel.create_default()
 
+    # Initialize memory components
+    memory_engine = MemoryEngine(config=load_memory_config(), bus=message_bus)
+    await memory_engine.prepare()
+    memory_events = MemoryEventHandler(memory_engine, message_bus)
+    memory_events.attach()
+
     # Initialize dialogue engine
     dialogue_engine = DialogueEngine(
         default_provider="openai",
         default_model="gpt-4o",
         system_prompt=personality.generate_system_prompt(),
+        message_bus=message_bus,
+        memory_engine=memory_engine,
     )
 
     # Initialize emotion components
-    emotion_analyzer = EmotionAnalyzer()
+    emotion_manager = EmotionConfigManager(bus=message_bus)
+    emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
     emotion_state = EmotionStateMachine()
 
     logger.info("Cerise API server started")

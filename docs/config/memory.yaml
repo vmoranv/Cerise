@@ -1,0 +1,54 @@
+store:
+  backend: sqlite         # sqlite | state | memory
+  sqlite_path: ""         # empty = ~/.cerise/memory/memory.db
+  state_path: ""          # empty = ~/.cerise/memory/state.json
+  ttl_seconds: 86400
+  max_records_per_session: 200
+
+sparse:
+  enabled: true
+  top_k: 5
+
+vector:
+  enabled: true
+  provider: faiss         # faiss | chroma | numpy
+  embedding_backend: hash # hash | provider
+  embedding_dim: 256
+  embedding_provider: ""  # provider id from providers.yaml
+  embedding_model: ""     # optional override
+  top_k: 5
+  persist_path: ""        # empty = ~/.cerise/memory/vectors
+
+kg:
+  enabled: true
+  top_k: 3
+  auto_extract: true
+
+compression:
+  enabled: true
+  threshold: 80
+  window: 40
+  max_chars: 1000
+
+recall:
+  enabled: true
+  top_k: 8
+  min_score: 0.05
+  rrf_k: 60
+
+rerank:
+  enabled: true
+  top_k: 8
+  weight: 0.35
+  provider_id: ""  # optional rerank provider id
+  model: ""
+
+association:
+  enabled: true
+  max_hops: 1
+  top_k: 5
+  max_entities: 12
+  include_facts: true
+  expand_from_query: true
+  expand_from_results: true
+  min_score: 0.02

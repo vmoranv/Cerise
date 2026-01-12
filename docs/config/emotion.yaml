@@ -1,0 +1,29 @@
+lexicon:
+  path: ""  # optional external lexicon file
+  keywords:
+    happy:
+      - ["happy", 1.0]
+      - ["joy", 0.9]
+    sad:
+      - ["sad", 1.0]
+  intensifiers: ["very", "really", "super"]
+  diminishers: ["a bit", "slightly"]
+  negations: ["not", "no", "never"]
+  positive_hints: ["love", "great"]
+  negative_hints: ["hate", "terrible"]
+
+rules:
+  enabled: ["sentiment_hint", "keyword", "punctuation", "emoticon"]
+  disabled: []
+  custom:
+    - name: "tease"
+      emotion: "excited"
+      weight: 0.6
+      patterns: ["(?i)just kidding", "(?i)teasing"]
+      kind: "regex"
+      priority: 55
+
+plugins_dir: ""          # empty = ~/.cerise/plugins
+plugin_glob: "**/emotion*.yaml"
+plugins:
+  - "community/emotion_pack.yaml"
