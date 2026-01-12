@@ -114,7 +114,14 @@ flowchart TB
 | ILipSync | 口型同步控制 |
 | IExpressionController | 表情控制 |
 
-### 6. 应用层 (Application)
+### 6. Live2D 驱动层 (VTube Studio)
+
+| 模块 | 职责 | 路径 |
+|------|------|------|
+| Live2DService | 监听情感事件并注入 Live2D 参数 | `apps/core/l2d/` |
+| VTS Driver Plugin | Node 插件创建/注入参数 | `plugins/vts-driver/` |
+
+### 7. 应用层 (Application)
 
 | 模块 | 职责 | 路径 |
 |------|------|------|
@@ -184,6 +191,7 @@ apps/
 │   │   ├── registry.py
 │   │   ├── builtin/
 │   │   └── plugins/
+│   ├── l2d/                         # Live2D 驱动
 │   └── api/                        # API 网关
 ├── tts-server/                     # 语音服务 (已存在)
 └── web/                            # 前端 (TypeScript)

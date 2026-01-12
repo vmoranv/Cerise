@@ -1,0 +1,169 @@
+{
+  "$schema": "https://cerise.dev/schemas/plugin-manifest-v2.json",
+  "name": "vts-driver",
+  "version": "0.1.0",
+  "display_name": "VTube Studio Driver",
+  "description": "Drive Live2D parameters in VTube Studio via custom parameters and injection.",
+  "author": "Cerise",
+  "runtime": {
+    "language": "node",
+    "entry": "index.js",
+    "command": "node index.js",
+    "transport": "stdio"
+  },
+  "abilities": [
+    {
+      "name": "l2d.set_emotion",
+      "description": "Set emotion valence/arousal/intensity parameters in VTube Studio.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "valence": {
+            "type": "number",
+            "minimum": -1,
+            "maximum": 1,
+            "description": "Emotion valence (-1 to 1)."
+          },
+          "arousal": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Emotion arousal (0 to 1)."
+          },
+          "intensity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Emotion intensity (0 to 1)."
+          },
+          "smoothing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Smoothing factor (0 = snap, 1 = max smoothing)."
+          }
+        },
+        "required": ["valence", "arousal", "intensity"]
+      }
+    },
+    {
+      "name": "l2d.set_parameters",
+      "description": "Set arbitrary Live2D parameter values in VTube Studio.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Live2D parameter name"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Value to inject"
+                },
+                "weight": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Blend weight with tracking (0-1)"
+                }
+              },
+              "required": ["id", "value"]
+            }
+          },
+          "smoothing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Smoothing factor (0 = snap, 1 = max smoothing)."
+          }
+        },
+        "required": ["parameters"]
+      }
+    }
+  ],
+  "permissions": ["network.websocket"],
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "host": {
+        "type": "string",
+        "description": "VTube Studio host"
+      },
+      "port": {
+        "type": "integer",
+        "description": "VTube Studio port"
+      },
+      "url": {
+        "type": "string",
+        "description": "Full WebSocket URL, overrides host/port"
+      },
+      "pluginName": {
+        "type": "string",
+        "description": "Plugin display name in VTube Studio"
+      },
+      "pluginDeveloper": {
+        "type": "string",
+        "description": "Plugin developer name in VTube Studio"
+      },
+      "authTokenPath": {
+        "type": "string",
+        "description": "Path to store authentication token"
+      },
+      "autoCreateParameters": {
+        "type": "boolean",
+        "description": "Auto-create custom emotion parameters"
+      },
+      "refreshIntervalMs": {
+        "type": "integer",
+        "description": "Parameter refresh interval in milliseconds"
+      },
+      "smoothing": {
+        "type": "number",
+        "description": "Default smoothing factor"
+      },
+      "parameterNames": {
+        "type": "object",
+        "properties": {
+          "valence": {"type": "string"},
+          "arousal": {"type": "string"},
+          "intensity": {"type": "string"}
+        }
+      },
+      "parameterRanges": {
+        "type": "object",
+        "properties": {
+          "valence": {
+            "type": "object",
+            "properties": {
+              "min": {"type": "number"},
+              "max": {"type": "number"},
+              "default": {"type": "number"}
+            }
+          },
+          "arousal": {
+            "type": "object",
+            "properties": {
+              "min": {"type": "number"},
+              "max": {"type": "number"},
+              "default": {"type": "number"}
+            }
+          },
+          "intensity": {
+            "type": "object",
+            "properties": {
+              "min": {"type": "number"},
+              "max": {"type": "number"},
+              "default": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "required": []
+  }
+}

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.dialogue import Session
 from ..character import EmotionStateMachine, PersonalityModel
+from ..l2d import Live2DService
 from .container import AppServices, build_services, shutdown_services
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,24 @@ class SessionResponse(BaseModel):
 class EmotionUpdate(BaseModel):
     emotion: str
     intensity: float = 1.0
+
+
+class Live2DParameter(BaseModel):
+    id: str
+    value: float
+    weight: float | None = None
+
+
+class Live2DParametersUpdate(BaseModel):
+    parameters: list[Live2DParameter]
+    smoothing: float | None = None
+
+
+class Live2DEmotionUpdate(BaseModel):
+    valence: float
+    arousal: float
+    intensity: float
+    smoothing: float | None = None
 
 
 class HealthResponse(BaseModel):
@@ -121,6 +140,10 @@ def get_emotion_state(services: AppServices = Depends(get_services)) -> EmotionS
 
 def get_personality(services: AppServices = Depends(get_services)) -> PersonalityModel:
     return services.personality
+
+
+def get_live2d(services: AppServices = Depends(get_services)) -> Live2DService:
+    return services.live2d
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -241,6 +264,46 @@ async def set_emotion(
     """Manually set emotion state"""
     emotion_state.set_emotion(request.emotion, request.intensity)
     return emotion_state.get_animation_params()
+
+
+@router.post("/l2d/emotion")
+async def set_live2d_emotion(
+    request: Live2DEmotionUpdate,
+    live2d: Live2DService = Depends(get_live2d),
+):
+    """Manually set Live2D emotion parameters."""
+    result = await live2d.set_emotion(
+        valence=request.valence,
+        arousal=request.arousal,
+        intensity=request.intensity,
+        smoothing=request.smoothing,
+        user_id="manual",
+        session_id="l2d",
+    )
+    if result is None:
+        raise HTTPException(status_code=503, detail="Live2D ability not available")
+    if not result.success:
+        raise HTTPException(status_code=502, detail=result.error or "Live2D update failed")
+    return {"status": "ok", "data": result.data}
+
+
+@router.post("/l2d/params")
+async def set_live2d_parameters(
+    request: Live2DParametersUpdate,
+    live2d: Live2DService = Depends(get_live2d),
+):
+    """Manually set arbitrary Live2D parameters."""
+    result = await live2d.set_parameters(
+        parameters=[param.model_dump(exclude_none=True) for param in request.parameters],
+        smoothing=request.smoothing,
+        user_id="manual",
+        session_id="l2d",
+    )
+    if result is None:
+        raise HTTPException(status_code=503, detail="Live2D ability not available")
+    if not result.success:
+        raise HTTPException(status_code=502, detail=result.error or "Live2D update failed")
+    return {"status": "ok", "data": result.data}
 
 
 @router.websocket("/ws/chat")

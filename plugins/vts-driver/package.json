@@ -1,0 +1,15 @@
+{
+  "name": "cerise-vts-driver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cerise VTube Studio driver plugin.",
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "vtubestudio": "^3.11.0",
+    "ws": "^8.18.0"
+  }
+}

@@ -90,6 +90,10 @@ class EmotionPipeline:
                     data={
                         "primary": result.primary_emotion.value,
                         "confidence": result.confidence,
+                        "valence": result.valence,
+                        "arousal": result.arousal,
+                        "dominance": result.dominance,
+                        "intensity": result.confidence,
                     },
                     source="emotion_pipeline",
                 )

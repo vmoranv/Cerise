@@ -150,6 +150,9 @@ class PluginProxyAbility:
             emotion_hint=result.emotion_hint,
         )
 
+    async def validate_params(self, params: dict) -> bool:
+        return True
+
     async def on_load(self) -> None:
         pass
 
