@@ -8,7 +8,7 @@ from typing import Protocol
 
 from ..abilities import AbilityResult
 from ..ai.emotion.types import EmotionResult
-from ..ai.memory import MemoryRecord, MemoryResult
+from ..ai.memory import CoreProfile, MemoryRecord, MemoryResult, ProceduralHabit, SemanticFact
 
 
 class EmotionService(Protocol):
@@ -48,6 +48,70 @@ class MemoryService(Protocol):
 
     def format_context(self, results: list[MemoryResult]) -> str:
         """Format memory results for prompt injection."""
+
+
+class CoreProfileService(Protocol):
+    """Core profile store port."""
+
+    async def upsert_profile(
+        self,
+        *,
+        profile_id: str,
+        summary: str,
+        session_id: str | None = None,
+    ) -> CoreProfile:
+        """Create or update a core profile snapshot."""
+
+    async def get_profile(self, profile_id: str) -> CoreProfile | None:
+        """Fetch a core profile by id."""
+
+    async def list_profiles(self, session_id: str | None = None) -> list[CoreProfile]:
+        """List core profiles."""
+
+
+class SemanticFactsService(Protocol):
+    """Semantic facts store port."""
+
+    async def upsert_fact(
+        self,
+        *,
+        fact_id: str,
+        session_id: str,
+        subject: str,
+        predicate: str,
+        object: str,
+    ) -> SemanticFact:
+        """Create or update a semantic fact."""
+
+    async def list_facts(
+        self,
+        *,
+        session_id: str | None = None,
+        subject: str | None = None,
+    ) -> list[SemanticFact]:
+        """List semantic facts."""
+
+
+class ProceduralHabitsService(Protocol):
+    """Procedural habits store port."""
+
+    async def record_habit(
+        self,
+        *,
+        habit_id: str,
+        session_id: str,
+        task_type: str,
+        instruction: str,
+    ) -> ProceduralHabit:
+        """Record a procedural habit."""
+
+    async def list_habits(
+        self,
+        *,
+        session_id: str | None = None,
+        task_type: str | None = None,
+    ) -> list[ProceduralHabit]:
+        """List procedural habits."""
 
 
 class Live2DDriver(Protocol):

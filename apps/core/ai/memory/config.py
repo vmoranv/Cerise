@@ -101,10 +101,24 @@ class MemoryAssociationConfig:
 
 
 @dataclass
+class MemoryLayerStoreConfig:
+    """Layered store configuration."""
+
+    enabled: bool = True
+    backend: str = "sqlite"  # sqlite | state | memory
+    sqlite_path: str = ""
+    state_path: str = ""
+    max_records: int = 200
+
+
+@dataclass
 class MemoryConfig:
     """Overall memory configuration."""
 
     store: MemoryStoreConfig = field(default_factory=MemoryStoreConfig)
+    l1_core: MemoryLayerStoreConfig = field(default_factory=MemoryLayerStoreConfig)
+    l2_semantic: MemoryLayerStoreConfig = field(default_factory=MemoryLayerStoreConfig)
+    l4_procedural: MemoryLayerStoreConfig = field(default_factory=MemoryLayerStoreConfig)
     sparse: MemorySparseConfig = field(default_factory=MemorySparseConfig)
     vector: MemoryVectorConfig = field(default_factory=MemoryVectorConfig)
     kg: MemoryKGConfig = field(default_factory=MemoryKGConfig)
@@ -140,6 +154,9 @@ def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
     merged = _merge_dict(defaults_to_dict(defaults), data)
     config = MemoryConfig(
         store=MemoryStoreConfig(**merged.get("store", {})),
+        l1_core=MemoryLayerStoreConfig(**merged.get("l1_core", {})),
+        l2_semantic=MemoryLayerStoreConfig(**merged.get("l2_semantic", {})),
+        l4_procedural=MemoryLayerStoreConfig(**merged.get("l4_procedural", {})),
         sparse=MemorySparseConfig(**merged.get("sparse", {})),
         vector=MemoryVectorConfig(**merged.get("vector", {})),
         kg=MemoryKGConfig(**merged.get("kg", {})),
@@ -156,12 +173,17 @@ def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
     if not config.vector.persist_path:
         config.vector.persist_path = str(Path(get_data_dir()) / "memory" / "vectors")
 
+    _apply_layer_defaults(config)
+
     return config
 
 
 def defaults_to_dict(config: MemoryConfig) -> dict[str, Any]:
     return {
         "store": config.store.__dict__,
+        "l1_core": config.l1_core.__dict__,
+        "l2_semantic": config.l2_semantic.__dict__,
+        "l4_procedural": config.l4_procedural.__dict__,
         "sparse": config.sparse.__dict__,
         "vector": config.vector.__dict__,
         "kg": config.kg.__dict__,
@@ -170,3 +192,17 @@ def defaults_to_dict(config: MemoryConfig) -> dict[str, Any]:
         "rerank": config.rerank.__dict__,
         "association": config.association.__dict__,
     }
+
+
+def _apply_layer_defaults(config: MemoryConfig) -> None:
+    data_dir = Path(get_data_dir()) / "memory"
+
+    def apply_layer(layer: MemoryLayerStoreConfig, default_name: str) -> None:
+        if not layer.sqlite_path:
+            layer.sqlite_path = str(data_dir / f"{default_name}.db")
+        if not layer.state_path:
+            layer.state_path = str(data_dir / f"{default_name}.json")
+
+    apply_layer(config.l1_core, "l1_core")
+    apply_layer(config.l2_semantic, "l2_semantic")
+    apply_layer(config.l4_procedural, "l4_procedural")

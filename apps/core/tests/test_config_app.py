@@ -1,6 +1,6 @@
 """Tests for AppConfig schema."""
 
-from config.schemas import AIConfig, AppConfig, PluginsConfig, ServerConfig
+from apps.core.config.schemas import AIConfig, AppConfig, PluginsConfig, ServerConfig
 
 
 class TestAppConfig:

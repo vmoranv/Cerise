@@ -4,12 +4,32 @@ Local adapters for service ports.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from ..abilities import AbilityResult
 from ..ai import EmotionAnalyzer
 from ..ai.emotion.types import EmotionResult
 from ..ai.memory import MemoryEngine, MemoryRecord, MemoryResult
+from ..ai.memory.layer_store import (
+    CoreProfileStateStore,
+    CoreProfileStore,
+    ProceduralHabitsStateStore,
+    ProceduralHabitsStore,
+    SemanticFactsStateStore,
+    SemanticFactsStore,
+)
 from ..l2d import Live2DService
-from .ports import EmotionService, Live2DDriver, MemoryService
+from .ports import (
+    CoreProfile,
+    CoreProfileService,
+    EmotionService,
+    Live2DDriver,
+    MemoryService,
+    ProceduralHabit,
+    ProceduralHabitsService,
+    SemanticFact,
+    SemanticFactsService,
+)
 
 
 class LocalEmotionService(EmotionService):
@@ -63,6 +83,135 @@ class LocalMemoryService(MemoryService):
 
     def format_context(self, results: list[MemoryResult]) -> str:
         return self._engine.format_context(results)
+
+
+class LocalCoreProfileService(CoreProfileService):
+    """In-process core profile adapter."""
+
+    def __init__(
+        self,
+        store: CoreProfileStore | CoreProfileStateStore | None = None,
+    ) -> None:
+        self._store = store
+
+    async def upsert_profile(
+        self,
+        *,
+        profile_id: str,
+        summary: str,
+        session_id: str | None = None,
+    ) -> CoreProfile:
+        if not self._store:
+            return CoreProfile(
+                profile_id=profile_id,
+                summary=summary,
+                session_id=session_id,
+                updated_at=datetime.utcnow(),
+            )
+        return await self._store.upsert_profile(
+            profile_id=profile_id,
+            summary=summary,
+            session_id=session_id,
+        )
+
+    async def get_profile(self, profile_id: str) -> CoreProfile | None:
+        if not self._store:
+            return None
+        return await self._store.get_profile(profile_id)
+
+    async def list_profiles(self, session_id: str | None = None) -> list[CoreProfile]:
+        if not self._store:
+            return []
+        return await self._store.list_profiles(session_id=session_id)
+
+
+class LocalSemanticFactsService(SemanticFactsService):
+    """In-process semantic facts adapter."""
+
+    def __init__(
+        self,
+        store: SemanticFactsStore | SemanticFactsStateStore | None = None,
+    ) -> None:
+        self._store = store
+
+    async def upsert_fact(
+        self,
+        *,
+        fact_id: str,
+        session_id: str,
+        subject: str,
+        predicate: str,
+        object: str,
+    ) -> SemanticFact:
+        if not self._store:
+            return SemanticFact(
+                fact_id=fact_id,
+                session_id=session_id,
+                subject=subject,
+                predicate=predicate,
+                object=object,
+                updated_at=datetime.utcnow(),
+            )
+        return await self._store.upsert_fact(
+            fact_id=fact_id,
+            session_id=session_id,
+            subject=subject,
+            predicate=predicate,
+            object=object,
+        )
+
+    async def list_facts(
+        self,
+        *,
+        session_id: str | None = None,
+        subject: str | None = None,
+    ) -> list[SemanticFact]:
+        if not self._store:
+            return []
+        return await self._store.list_facts(session_id=session_id, subject=subject)
+
+
+class LocalProceduralHabitsService(ProceduralHabitsService):
+    """In-process procedural habits adapter."""
+
+    def __init__(
+        self,
+        store: ProceduralHabitsStore | ProceduralHabitsStateStore | None = None,
+    ) -> None:
+        self._store = store
+
+    async def record_habit(
+        self,
+        *,
+        habit_id: str,
+        session_id: str,
+        task_type: str,
+        instruction: str,
+    ) -> ProceduralHabit:
+        if not self._store:
+            return ProceduralHabit(
+                habit_id=habit_id,
+                session_id=session_id,
+                task_type=task_type,
+                instruction=instruction,
+                updated_at=datetime.utcnow(),
+            )
+        return await self._store.record_habit(
+            habit_id=habit_id,
+            session_id=session_id,
+            task_type=task_type,
+            instruction=instruction,
+        )
+
+    async def list_habits(
+        self,
+        *,
+        session_id: str | None = None,
+        task_type: str | None = None,
+    ) -> list[ProceduralHabit]:
+        if not self._store:
+            return []
+        return await self._store.list_habits(session_id=session_id, task_type=task_type)
 
 
 class LocalLive2DService(Live2DDriver):

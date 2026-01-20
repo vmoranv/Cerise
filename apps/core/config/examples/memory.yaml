@@ -5,6 +5,27 @@ store:
   ttl_seconds: 86400
   max_records_per_session: 200
 
+l1_core:
+  enabled: true
+  backend: sqlite         # sqlite | state | memory
+  sqlite_path: ""         # empty = ~/.cerise/memory/l1_core.db
+  state_path: ""          # empty = ~/.cerise/memory/l1_core.json
+  max_records: 200
+
+l2_semantic:
+  enabled: true
+  backend: sqlite         # sqlite | state | memory
+  sqlite_path: ""         # empty = ~/.cerise/memory/l2_semantic.db
+  state_path: ""          # empty = ~/.cerise/memory/l2_semantic.json
+  max_records: 200
+
+l4_procedural:
+  enabled: true
+  backend: sqlite         # sqlite | state | memory
+  sqlite_path: ""         # empty = ~/.cerise/memory/l4_procedural.db
+  state_path: ""          # empty = ~/.cerise/memory/l4_procedural.json
+  max_records: 200
+
 sparse:
   enabled: true
   top_k: 5

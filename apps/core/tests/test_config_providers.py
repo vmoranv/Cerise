@@ -1,6 +1,6 @@
 """Tests for provider config schemas."""
 
-from config.schemas import ProviderConfig, ProvidersConfig
+from apps.core.config.schemas import ProviderConfig, ProvidersConfig
 
 
 class TestProviderConfig:

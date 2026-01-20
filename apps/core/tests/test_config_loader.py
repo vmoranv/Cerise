@@ -5,9 +5,8 @@ import tempfile
 from pathlib import Path
 
 import yaml
-
-from config.loader import ConfigLoader
-from config.schemas import AIConfig, AppConfig, ProviderConfig, ProvidersConfig, ServerConfig
+from apps.core.config.loader import ConfigLoader
+from apps.core.config.schemas import AIConfig, AppConfig, ProviderConfig, ProvidersConfig, ServerConfig
 
 
 def _prepare_data_dir(tmpdir: str) -> Path:

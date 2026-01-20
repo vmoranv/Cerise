@@ -17,7 +17,6 @@ export default defineConfig({
           { text: '指南', link: '/guide/' },
           { text: 'API', link: '/api/' },
           { text: '插件', link: '/plugins/' },
-          { text: '项目', link: '/project/' },
           { text: '开发', link: '/development/' }
         ],
         sidebar: {
@@ -65,15 +64,6 @@ export default defineConfig({
               items: [
                 { text: '插件列表', link: '/plugins/' },
                 { text: '开发指南', link: '/plugins/development' }
-              ]
-            }
-          ],
-          '/project/': [
-            {
-              text: '项目',
-              items: [
-                { text: '概览', link: '/project/' },
-                { text: '记忆层调研', link: '/project/memory-layer-research' }
               ]
             }
           ],

@@ -1,6 +1,6 @@
 """Event contract smoke tests."""
 
-from contracts import events as ev
+from apps.core.contracts import events as ev
 
 
 def test_event_names_unique() -> None:

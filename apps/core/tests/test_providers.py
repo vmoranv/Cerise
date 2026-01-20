@@ -1,9 +1,8 @@
 """Tests for provider registry."""
 
 import pytest
-
-from ai.providers.base import BaseProvider
-from ai.providers.registry import ProviderRegistry
+from apps.core.ai.providers.base import BaseProvider
+from apps.core.ai.providers.registry import ProviderRegistry
 
 
 class TestProviderRegistry:

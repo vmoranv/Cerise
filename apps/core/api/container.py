@@ -10,22 +10,33 @@ from pathlib import Path
 from ..abilities import AbilityRegistry
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.emotion import EmotionConfigManager
-from ..ai.memory import MemoryEngine, load_memory_config
+from ..ai.memory import MemoryEngine, MemoryPipeline, RuleBasedMemoryExtractor, load_memory_config
+from ..ai.memory.layer_store import (
+    build_core_profile_store,
+    build_procedural_habits_store,
+    build_semantic_facts_store,
+)
 from ..ai.providers import ProviderRegistry
 from ..character import EmotionStateMachine, PersonalityModel
 from ..config import get_config_loader
-from ..events import Live2DEmotionHandler, MemoryEventHandler
+from ..events import Live2DEmotionHandler, MemoryEventHandler, MemoryLayerEventHandler
 from ..infrastructure import EventBus, StateStore, set_default_bus
 from ..l2d import Live2DService
 from ..plugins import PluginBridge, PluginManager
 from ..runtime import build_event_bus
 from ..services import (
+    CoreProfileService,
     EmotionService,
     Live2DDriver,
+    LocalCoreProfileService,
     LocalEmotionService,
     LocalLive2DService,
     LocalMemoryService,
+    LocalProceduralHabitsService,
+    LocalSemanticFactsService,
     MemoryService,
+    ProceduralHabitsService,
+    SemanticFactsService,
 )
 
 
@@ -41,6 +52,11 @@ class AppServices:
     memory_engine: MemoryEngine
     memory_service: MemoryService
     memory_events: MemoryEventHandler
+    core_profiles: CoreProfileService
+    semantic_facts: SemanticFactsService
+    procedural_habits: ProceduralHabitsService
+    memory_layer_events: MemoryLayerEventHandler
+    memory_pipeline: MemoryPipeline
     live2d_events: Live2DEmotionHandler
     emotion_manager: EmotionConfigManager
     emotion_service: EmotionService
@@ -61,11 +77,30 @@ async def build_services() -> AppServices:
 
     personality = PersonalityModel.create_default()
 
-    memory_engine = MemoryEngine(config=load_memory_config(), bus=message_bus)
+    memory_config = load_memory_config()
+    memory_engine = MemoryEngine(config=memory_config, bus=message_bus)
     await memory_engine.prepare()
     memory_service = LocalMemoryService(memory_engine)
     memory_events = MemoryEventHandler(message_bus, memory_service)
     memory_events.attach()
+
+    core_profile_store = build_core_profile_store(memory_config.l1_core)
+    semantic_facts_store = build_semantic_facts_store(memory_config.l2_semantic)
+    procedural_habits_store = build_procedural_habits_store(memory_config.l4_procedural)
+    core_profiles = LocalCoreProfileService(core_profile_store)
+    semantic_facts = LocalSemanticFactsService(semantic_facts_store)
+    procedural_habits = LocalProceduralHabitsService(procedural_habits_store)
+    memory_layer_events = MemoryLayerEventHandler(
+        message_bus,
+        core_profiles,
+        semantic_facts,
+        procedural_habits,
+    )
+    memory_layer_events.attach()
+
+    memory_extractor = RuleBasedMemoryExtractor()
+    memory_pipeline = MemoryPipeline(bus=message_bus, store=memory_engine.store, extractor=memory_extractor)
+    memory_pipeline.attach()
 
     emotion_manager = EmotionConfigManager(bus=message_bus)
     emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
@@ -101,6 +136,11 @@ async def build_services() -> AppServices:
         memory_engine=memory_engine,
         memory_service=memory_service,
         memory_events=memory_events,
+        core_profiles=core_profiles,
+        semantic_facts=semantic_facts,
+        procedural_habits=procedural_habits,
+        memory_layer_events=memory_layer_events,
+        memory_pipeline=memory_pipeline,
         live2d_events=live2d_events,
         emotion_manager=emotion_manager,
         emotion_service=emotion_service,

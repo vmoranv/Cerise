@@ -36,6 +36,11 @@ providers:
     model: "gemini-pro"
 ```
 
+## 记忆配置
+
+记忆配置文件位于 `~/.cerise/memory.yaml`，示例配置见 `apps/core/config/examples/memory.yaml`。
+详细使用方式与分层配置说明请参考 [记忆系统](./memory)。
+
 ## 角色配置
 
 角色配置文件位于 `~/.cerise/characters/` 目录。
