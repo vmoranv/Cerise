@@ -145,7 +145,7 @@ def create_app() -> FastAPI:
 
 def run_server(
     host: str = "0.0.0.0",
-    port: int = 8000,
+    port: int = 8001,
     workers: int = 1,
     reload: bool = False,
     log_level: str = "info",
@@ -182,7 +182,7 @@ def run_server(
     )
 
 
-def run_with_genie(host: str = "0.0.0.0", port: int = 8000, workers: int = 1):
+def run_with_genie(host: str = "0.0.0.0", port: int = 8001, workers: int = 1):
     """
     使用 Genie-TTS 内置服务器运行
 
@@ -209,7 +209,7 @@ def main():
 
     parser.add_argument("--host", type=str, default="0.0.0.0", help="绑定地址（默认: 0.0.0.0）")
 
-    parser.add_argument("--port", type=int, default=8000, help="端口号（默认: 8000）")
+    parser.add_argument("--port", type=int, default=8001, help="端口号（默认: 8001）")
 
     parser.add_argument("--workers", type=int, default=1, help="工作进程数（默认: 1）")
 

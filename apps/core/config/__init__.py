@@ -9,6 +9,7 @@ from .loader import ConfigLoader, ensure_data_dir, get_config_loader, get_data_d
 from .schemas import (
     AIConfig,
     AppConfig,
+    BusConfig,
     CharacterConfig,
     InstalledPlugin,
     LoggingConfig,
@@ -32,6 +33,7 @@ __all__ = [
     "AppConfig",
     "ServerConfig",
     "AIConfig",
+    "BusConfig",
     "PluginsConfig",
     "TTSConfig",
     "LoggingConfig",

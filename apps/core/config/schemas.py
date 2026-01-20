@@ -48,6 +48,16 @@ class LoggingConfig(BaseModel):
     file: str = ""  # Empty = no file logging
 
 
+class BusConfig(BaseModel):
+    """Event bus configuration."""
+
+    mode: str = "local"  # local | multiprocess
+    broker_host: str = "127.0.0.1"
+    broker_port: int = 8765
+    auth_key: str = "cerise"
+    start_broker: bool = True
+
+
 class AppConfig(BaseModel):
     """Main application configuration"""
 
@@ -56,6 +66,7 @@ class AppConfig(BaseModel):
     plugins: PluginsConfig = Field(default_factory=PluginsConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    bus: BusConfig = Field(default_factory=BusConfig)
 
 
 # ----- Provider Configuration -----

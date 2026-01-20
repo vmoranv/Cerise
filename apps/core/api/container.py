@@ -10,28 +10,40 @@ from pathlib import Path
 from ..abilities import AbilityRegistry
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.emotion import EmotionConfigManager
-from ..ai.memory import MemoryEngine, MemoryEventHandler, load_memory_config
+from ..ai.memory import MemoryEngine, load_memory_config
 from ..ai.providers import ProviderRegistry
 from ..character import EmotionStateMachine, PersonalityModel
 from ..config import get_config_loader
-from ..infrastructure import MessageBus, StateStore
+from ..events import Live2DEmotionHandler, MemoryEventHandler
+from ..infrastructure import EventBus, StateStore, set_default_bus
 from ..l2d import Live2DService
 from ..plugins import PluginBridge, PluginManager
+from ..runtime import build_event_bus
+from ..services import (
+    EmotionService,
+    Live2DDriver,
+    LocalEmotionService,
+    LocalLive2DService,
+    LocalMemoryService,
+    MemoryService,
+)
 
 
 @dataclass
 class AppServices:
     """Runtime service graph for the API process."""
 
-    message_bus: MessageBus
+    message_bus: EventBus
     state_store: StateStore
     plugin_manager: PluginManager
     plugin_bridge: PluginBridge
-    live2d: Live2DService
+    live2d: Live2DDriver
     memory_engine: MemoryEngine
+    memory_service: MemoryService
     memory_events: MemoryEventHandler
+    live2d_events: Live2DEmotionHandler
     emotion_manager: EmotionConfigManager
-    emotion_analyzer: EmotionAnalyzer
+    emotion_service: EmotionService
     emotion_state: EmotionStateMachine
     personality: PersonalityModel
     dialogue_engine: DialogueEngine
@@ -39,8 +51,11 @@ class AppServices:
 
 async def build_services() -> AppServices:
     """Create and wire core services."""
-    message_bus = MessageBus()
+    loader = get_config_loader()
+    app_config = loader.get_app_config()
+    message_bus = build_event_bus(app_config.bus)
     await message_bus.start()
+    set_default_bus(message_bus)
 
     state_store = StateStore()
 
@@ -48,27 +63,31 @@ async def build_services() -> AppServices:
 
     memory_engine = MemoryEngine(config=load_memory_config(), bus=message_bus)
     await memory_engine.prepare()
-    memory_events = MemoryEventHandler(memory_engine, message_bus)
+    memory_service = LocalMemoryService(memory_engine)
+    memory_events = MemoryEventHandler(message_bus, memory_service)
     memory_events.attach()
 
     emotion_manager = EmotionConfigManager(bus=message_bus)
     emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
-    emotion_state = EmotionStateMachine()
+    emotion_service = LocalEmotionService(emotion_analyzer)
+    emotion_state = EmotionStateMachine(bus=message_bus)
 
     plugin_manager = PluginManager(_resolve_plugins_dir())
     await _load_plugins(plugin_manager)
     plugin_bridge = PluginBridge(plugin_manager)
     await plugin_bridge.register_plugin_abilities()
 
-    live2d = Live2DService(bus=message_bus)
-    live2d.attach()
+    live2d_service = Live2DService()
+    live2d = LocalLive2DService(live2d_service)
+    live2d_events = Live2DEmotionHandler(bus=message_bus, live2d=live2d)
+    live2d_events.attach()
 
     dialogue_engine = DialogueEngine(
         default_provider="openai",
         default_model="gpt-4o",
         system_prompt=personality.generate_system_prompt(),
         message_bus=message_bus,
-        memory_engine=memory_engine,
+        memory_service=memory_service,
         provider_registry=ProviderRegistry,
         ability_registry=AbilityRegistry,
     )
@@ -80,9 +99,11 @@ async def build_services() -> AppServices:
         plugin_bridge=plugin_bridge,
         live2d=live2d,
         memory_engine=memory_engine,
+        memory_service=memory_service,
         memory_events=memory_events,
+        live2d_events=live2d_events,
         emotion_manager=emotion_manager,
-        emotion_analyzer=emotion_analyzer,
+        emotion_service=emotion_service,
         emotion_state=emotion_state,
         personality=personality,
         dialogue_engine=dialogue_engine,

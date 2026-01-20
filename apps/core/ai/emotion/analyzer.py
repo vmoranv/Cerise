@@ -6,7 +6,7 @@ Dependency-injected wrapper around the emotion pipeline.
 
 from __future__ import annotations
 
-from ...infrastructure import MessageBus
+from ...infrastructure import EventBus
 from .lexicon import DEFAULT_LEXICON, EmotionLexicon
 from .manager import EmotionConfigManager
 from .pipeline import VAD_VALUES, EmotionPipeline
@@ -25,18 +25,20 @@ class EmotionAnalyzer:
         rules: list[EmotionRule] | None = None,
         registry: EmotionRuleRegistry | None = None,
         lexicon: EmotionLexicon | None = None,
-        bus: MessageBus | None = None,
+        bus: EventBus | None = None,
         manager: EmotionConfigManager | None = None,
         character: str | None = None,
     ):
         self._character = character or "default"
         self._manager = manager
         if pipeline is None and manager is None:
+            if bus is None:
+                raise ValueError("bus is required when no pipeline or manager is provided")
             lex = lexicon or DEFAULT_LEXICON
             if rules is None:
                 registry = registry or EmotionRuleRegistry.default(lex)
                 rules = registry.build()
-            pipeline = EmotionPipeline(rules=rules, bus=bus or MessageBus())
+            pipeline = EmotionPipeline(rules=rules, bus=bus)
         self._pipeline = pipeline
 
     def analyze(self, text: str, *, character: str | None = None) -> EmotionResult:

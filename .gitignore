@@ -71,6 +71,7 @@ logs/
 .cerise/
 *.sqlite
 *.db
+.claude/
 
 # Cache
 .cache/
@@ -81,3 +82,17 @@ tmp/
 temp/
 *.tmp
 *.temp
+.tmp/
+
+# VitePress
+apps/vitepress_doc/.vitepress/cache/
+apps/vitepress_doc/.vitepress/dist/
+
+# Next.js
+.next/
+
+# Docusaurus
+
+docs/
+CLAUDE.md
+AGENTS.md

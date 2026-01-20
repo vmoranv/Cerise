@@ -9,7 +9,7 @@ from .registry import MemoryScorerRegistry
 from .scorers import KeywordOverlapScorer, RecencyScorer
 from .sqlite_store import SqliteMemoryStore
 from .store import InMemoryStore, MemoryStore, StateStoreMemoryStore
-from .types import MemoryRecord, MemoryResult
+from .types import MemoryLayer, MemoryRecord, MemoryResult
 
 __all__ = [
     "MemoryEngine",
@@ -23,6 +23,7 @@ __all__ = [
     "MemoryStore",
     "StateStoreMemoryStore",
     "SqliteMemoryStore",
+    "MemoryLayer",
     "MemoryRecord",
     "MemoryResult",
 ]

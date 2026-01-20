@@ -1,0 +1,37 @@
+default: openai-1
+
+providers:
+  - id: openai-1
+    type: openai
+    name: OpenAI GPT-4
+    enabled: true
+    config:
+      api_key: ${OPENAI_API_KEY}
+      base_url: null
+      model: gpt-4o
+      custom_headers: {}
+      extra_body: {}
+      api_version: ""
+      azure_endpoint: ""
+
+  - id: claude-1
+    type: claude
+    name: Claude 3.5 Sonnet
+    enabled: false
+    config:
+      api_key: ${ANTHROPIC_API_KEY}
+
+  - id: gemini-1
+    type: gemini
+    name: Google Gemini Pro
+    enabled: false
+    config:
+      api_key: ${GOOGLE_API_KEY}
+
+  - id: ollama-1
+    type: ollama
+    name: Ollama Local
+    enabled: false
+    config:
+      api_key: ""
+      base_url: http://localhost:11434/v1

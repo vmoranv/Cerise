@@ -1,0 +1,37 @@
+"""Dependency providers for API routes."""
+
+from __future__ import annotations
+
+from fastapi import Depends, HTTPException, Request
+
+from ..ai import DialogueEngine
+from ..character import EmotionStateMachine, PersonalityModel
+from ..services.ports import EmotionService, Live2DDriver
+from .container import AppServices
+
+
+def get_services(request: Request) -> AppServices:
+    services = getattr(request.app.state, "services", None)
+    if not services:
+        raise HTTPException(status_code=500, detail="Services not initialized")
+    return services
+
+
+def get_dialogue_engine(services: AppServices = Depends(get_services)) -> DialogueEngine:
+    return services.dialogue_engine
+
+
+def get_emotion_service(services: AppServices = Depends(get_services)) -> EmotionService:
+    return services.emotion_service
+
+
+def get_emotion_state(services: AppServices = Depends(get_services)) -> EmotionStateMachine:
+    return services.emotion_state
+
+
+def get_personality(services: AppServices = Depends(get_services)) -> PersonalityModel:
+    return services.personality
+
+
+def get_live2d(services: AppServices = Depends(get_services)) -> Live2DDriver:
+    return services.live2d

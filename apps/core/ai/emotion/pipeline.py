@@ -9,7 +9,15 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from ...infrastructure import Event, MessageBus
+from ...contracts.events import (
+    EMOTION_ANALYSIS_COMPLETED,
+    EMOTION_ANALYSIS_STARTED,
+    EMOTION_RULE_SCORED,
+    build_emotion_analysis_completed,
+    build_emotion_analysis_started,
+    build_emotion_rule_scored,
+)
+from ...infrastructure import Event, EventBus
 from .rules import EmotionContext, EmotionRule
 from .types import EmotionResult, EmotionType
 
@@ -40,7 +48,7 @@ class EmotionPipeline:
     """Pipeline that composes multiple emotion rules."""
 
     rules: Iterable[EmotionRule]
-    bus: MessageBus | None = None
+    bus: EventBus | None = None
     output_map: dict[EmotionType, EmotionType] = field(default_factory=lambda: DEFAULT_OUTPUT_MAP.copy())
 
     def analyze(self, text: str) -> EmotionResult:
@@ -55,8 +63,8 @@ class EmotionPipeline:
         if self.bus:
             self.bus.publish_sync(
                 Event(
-                    type="emotion.analysis.started",
-                    data={"text_length": len(clean_text)},
+                    type=EMOTION_ANALYSIS_STARTED,
+                    data=build_emotion_analysis_started(len(clean_text)),
                     source="emotion_pipeline",
                 )
             )
@@ -72,11 +80,11 @@ class EmotionPipeline:
             if self.bus:
                 self.bus.publish_sync(
                     Event(
-                        type="emotion.rule.scored",
-                        data={
-                            "rule": getattr(rule, "name", rule.__class__.__name__),
-                            "scores": {k.value: v for k, v in result.scores.items()},
-                        },
+                        type=EMOTION_RULE_SCORED,
+                        data=build_emotion_rule_scored(
+                            rule=getattr(rule, "name", rule.__class__.__name__),
+                            scores={k.value: v for k, v in result.scores.items()},
+                        ),
                         source="emotion_pipeline",
                     )
                 )
@@ -86,15 +94,15 @@ class EmotionPipeline:
         if self.bus:
             self.bus.publish_sync(
                 Event(
-                    type="emotion.analysis.completed",
-                    data={
-                        "primary": result.primary_emotion.value,
-                        "confidence": result.confidence,
-                        "valence": result.valence,
-                        "arousal": result.arousal,
-                        "dominance": result.dominance,
-                        "intensity": result.confidence,
-                    },
+                    type=EMOTION_ANALYSIS_COMPLETED,
+                    data=build_emotion_analysis_completed(
+                        primary=result.primary_emotion.value,
+                        confidence=result.confidence,
+                        valence=result.valence,
+                        arousal=result.arousal,
+                        dominance=result.dominance,
+                        intensity=result.confidence,
+                    ),
                     source="emotion_pipeline",
                 )
             )

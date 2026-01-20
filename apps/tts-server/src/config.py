@@ -96,7 +96,7 @@ class ServerConfig(BaseModel):
     """服务器总配置"""
 
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8001
     workers: int = 1
 
     # 子配置

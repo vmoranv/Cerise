@@ -8,9 +8,10 @@ import importlib.util
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from .base import BaseAbility
+from .loader_types import LoadedPlugin
+from .loader_utils import merge_config, validate_manifest
 from .registry import AbilityRegistry
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class PluginLoader:
                 manifest = json.load(f)
 
             # Validate manifest
-            if not self._validate_manifest(manifest):
+            if not validate_manifest(manifest):
                 return False
 
             # Load plugin module
@@ -73,7 +74,7 @@ class PluginLoader:
             ability_class: type[BaseAbility] = getattr(module, class_name)
 
             # Merge config from manifest defaults
-            plugin_config = self._merge_config(manifest.get("config_schema", {}), config)
+            plugin_config = merge_config(manifest.get("config_schema", {}), config)
 
             # Instantiate
             ability_instance = ability_class(config=plugin_config)
@@ -161,54 +162,3 @@ class PluginLoader:
             return self._loaded_plugins[plugin_name].manifest
         return None
 
-    def _validate_manifest(self, manifest: dict) -> bool:
-        """Validate manifest has required fields"""
-        required = ["name", "version", "entry_point", "class_name"]
-        for field in required:
-            if field not in manifest:
-                logger.error(f"Manifest missing required field: {field}")
-                return False
-        return True
-
-    def _merge_config(self, schema: dict, user_config: dict | None) -> dict:
-        """Merge user config with defaults from schema"""
-        config = {}
-        properties = schema.get("properties", {})
-
-        for key, prop in properties.items():
-            if user_config and key in user_config:
-                config[key] = user_config[key]
-            elif "default" in prop:
-                config[key] = prop["default"]
-
-        # Add any extra user config
-        if user_config:
-            for key, value in user_config.items():
-                if key not in config:
-                    config[key] = value
-
-        return config
-
-
-class LoadedPlugin:
-    """Represents a loaded plugin"""
-
-    def __init__(
-        self,
-        name: str,
-        manifest: dict,
-        module: Any,
-        instance: BaseAbility,
-    ):
-        self.name = name
-        self.manifest = manifest
-        self.module = module
-        self.instance = instance
-
-    @property
-    def version(self) -> str:
-        return self.manifest.get("version", "0.0.0")
-
-    @property
-    def display_name(self) -> str:
-        return self.manifest.get("display_name", self.name)
