@@ -18,8 +18,6 @@ from .mp_broker import BrokerManager
 logger = logging.getLogger(__name__)
 
 
-
-
 class MultiProcessMessageBus(EventBus):
     """Async event bus backed by a multiprocess broker."""
 

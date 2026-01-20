@@ -161,4 +161,3 @@ class PluginLoader:
         if plugin_name in self._loaded_plugins:
             return self._loaded_plugins[plugin_name].manifest
         return None
-

@@ -159,4 +159,3 @@ class DialogueEngine(StreamChatMixin):
     def get_all_sessions(self) -> list[Session]:
         """Get all active sessions"""
         return list(self._sessions.values())
-
