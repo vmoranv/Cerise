@@ -9,9 +9,12 @@ import logging
 
 from fastapi import APIRouter, FastAPI, WebSocket
 
-from .http_routes import health_check, router as http_router
+from .http_routes import health_check
+from .http_routes import router as http_router
 from .ws_routes import (
     router as ws_router,
+)
+from .ws_routes import (
     websocket_asr_endpoint,
     websocket_endpoint,
     websocket_tts_endpoint,

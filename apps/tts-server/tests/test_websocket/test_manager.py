@@ -25,7 +25,9 @@ class TestConnectionManager:
         return ws
 
     @pytest.mark.asyncio
-    async def test_connect_and_disconnect(self, manager: ConnectionManager, mock_websocket: MagicMock):
+    async def test_connect_and_disconnect(
+        self, manager: ConnectionManager, mock_websocket: MagicMock
+    ):
         conn_id = await manager.connect(mock_websocket, connection_id="client-1")
         assert conn_id == "client-1"
         assert manager.connection_count == 1

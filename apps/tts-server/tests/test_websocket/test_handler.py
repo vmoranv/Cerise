@@ -26,7 +26,9 @@ class TestWebSocketHandler:
     def handler(self, manager: MagicMock) -> WebSocketHandler:
         tts_synthesize = AsyncMock(return_value=b"audio_data")
         asr_engine = MagicMock()
-        return WebSocketHandler(ServerConfig(), manager, asr_engine=asr_engine, tts_synthesize=tts_synthesize)
+        return WebSocketHandler(
+            ServerConfig(), manager, asr_engine=asr_engine, tts_synthesize=tts_synthesize
+        )
 
     @pytest.mark.asyncio
     async def test_handle_ping(self, handler: WebSocketHandler, manager: MagicMock):

@@ -13,7 +13,14 @@ from fastapi.responses import Response, StreamingResponse
 
 from ..config import get_config
 from .deps import get_asr_engine, get_connection_manager, get_tts_adapter
-from .schemas import ASRRequest, ASRResponse, ConfigResponse, HealthResponse, TTSRequest, TTSResponse
+from .schemas import (
+    ASRRequest,
+    ASRResponse,
+    ConfigResponse,
+    HealthResponse,
+    TTSRequest,
+    TTSResponse,
+)
 
 logger = logging.getLogger(__name__)
 

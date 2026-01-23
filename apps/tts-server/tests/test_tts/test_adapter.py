@@ -51,7 +51,9 @@ class TestCloudTTSAdapter:
 
     @pytest.mark.asyncio
     async def test_synthesize_custom_audio(self):
-        adapter = CloudTTSAdapter(provider="custom", api_key="key", api_url="https://api.example.com")
+        adapter = CloudTTSAdapter(
+            provider="custom", api_key="key", api_url="https://api.example.com"
+        )
 
         mock_response = MagicMock()
         mock_response.headers = {"content-type": "audio/wav"}
