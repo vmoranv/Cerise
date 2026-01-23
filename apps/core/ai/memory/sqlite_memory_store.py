@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from .time_utils import ensure_timezone, from_timestamp, now
 from .types import MemoryRecord
 
 
@@ -145,6 +146,29 @@ class SqliteMemoryStore:
             ).fetchone()
         return int(row["count"]) if row else 0
 
+    async def touch(self, record_id: str, *, accessed_at: datetime | None = None) -> None:
+        cursor = self._conn.cursor()
+        row = cursor.execute(
+            "SELECT metadata FROM memories WHERE id = ?",
+            (record_id,),
+        ).fetchone()
+        if not row:
+            return
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+        current_time = ensure_timezone(accessed_at) if accessed_at else now()
+        access_count = metadata.get("access_count")
+        try:
+            access_count = int(access_count) if access_count is not None else 0
+        except (TypeError, ValueError):
+            access_count = 0
+        metadata["access_count"] = access_count + 1
+        metadata["last_accessed"] = current_time.isoformat()
+        cursor.execute(
+            "UPDATE memories SET metadata = ? WHERE id = ?",
+            (json.dumps(metadata, ensure_ascii=False), record_id),
+        )
+        self._conn.commit()
+
     def supports_fts(self) -> bool:
         cursor = self._conn.cursor()
         try:
@@ -192,5 +216,5 @@ class SqliteMemoryStore:
             metadata=metadata,
         )
         record.id = row["id"]
-        record.created_at = datetime.fromtimestamp(row["created_at"])
+        record.created_at = from_timestamp(row["created_at"])
         return record

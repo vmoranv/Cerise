@@ -4,10 +4,10 @@ Core profile state store.
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from ...infrastructure import StateStore
+from .time_utils import from_timestamp, now
 from .types import CoreProfile
 
 
@@ -26,7 +26,7 @@ class CoreProfileStateStore:
         summary: str,
         session_id: str | None = None,
     ) -> CoreProfile:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         profiles = await self._load()
         profiles[profile_id] = {
             "profile_id": profile_id,
@@ -78,5 +78,5 @@ class CoreProfileStateStore:
             profile_id=entry.get("profile_id", ""),
             summary=entry.get("summary", ""),
             session_id=entry.get("session_id"),
-            updated_at=datetime.fromtimestamp(float(entry.get("updated_at", 0.0))),
+            updated_at=from_timestamp(float(entry.get("updated_at", 0.0))),
         )

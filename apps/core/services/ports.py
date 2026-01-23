@@ -46,7 +46,7 @@ class MemoryService(Protocol):
     ) -> list[MemoryResult]:
         """Recall memory results for a query."""
 
-    def format_context(self, results: list[MemoryResult]) -> str:
+    async def format_context(self, results: list[MemoryResult], *, session_id: str | None = None) -> str:
         """Format memory results for prompt injection."""
 
 

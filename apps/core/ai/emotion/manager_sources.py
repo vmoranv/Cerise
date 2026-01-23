@@ -7,8 +7,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import yaml
-
+from ...config.file_utils import load_config_data, resolve_config_path
 from .config_loader import load_emotion_config
 from .config_models import EmotionConfig
 from .config_utils import emotion_config_from_dict, merge_emotion_configs
@@ -67,7 +66,7 @@ class ConfigSourceMixin:
             if not path.is_absolute():
                 path = (plugins_dir / path) if plugins_dir.exists() else (self._data_dir / entry)
             if path.is_dir():
-                candidate = path / "emotion.yaml"
+                candidate = resolve_config_path(path / "emotion.yaml")
                 if candidate.exists():
                     plugin_paths.add(candidate)
                 else:
@@ -91,12 +90,12 @@ class ConfigSourceMixin:
     def _load_character_config(self, character: str | None) -> tuple[EmotionConfig | None, Path | None]:
         if not character:
             return None, None
-        path = self._data_dir / "characters" / f"{character}.yaml"
+        base_path = self._data_dir / "characters" / f"{character}.yaml"
+        path = resolve_config_path(base_path)
         if not path.exists():
             return None, None
         try:
-            with open(path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
+            data = load_config_data(path)
             emotion_data = data.get("emotion", {}) if isinstance(data, dict) else {}
             if not emotion_data:
                 return None, None

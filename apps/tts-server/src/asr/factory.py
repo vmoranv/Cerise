@@ -42,20 +42,19 @@ class ASREngineFactory:
             if config.provider == ASRProvider.FUNASR:
                 logger.info("Creating FunASR engine for local inference")
                 return FunASREngine(
-                    model_name=config.local_model_path or "paraformer-zh",
-                    device=config.device,
-                    use_vad=config.use_vad,
-                    use_punc=config.use_punctuation,
+                    model_name=config.funasr_model,
+                    vad_model=config.funasr_vad_model,
+                    punc_model=config.funasr_punc_model,
                     language=language,
+                    device=config.funasr_device,
                 )
             elif config.provider == ASRProvider.WHISPER:
                 logger.info("Creating Whisper engine for local inference")
                 return WhisperEngine(
-                    model_name=config.local_model_path or "base",
-                    device=config.device,
-                    compute_type=config.compute_type,
-                    use_faster_whisper=config.use_faster_whisper,
+                    model_size=config.whisper_model,
                     language=language,
+                    device=config.whisper_device,
+                    compute_type=config.whisper_compute_type,
                 )
             else:
                 raise ValueError(
@@ -68,7 +67,7 @@ class ASREngineFactory:
             if config.provider == ASRProvider.CLOUD_API:
                 logger.info(f"Creating cloud ASR client: {config.cloud_provider}")
                 return CloudASRClient(
-                    provider=config.cloud_provider,
+                    provider=config.cloud_provider or "custom",
                     api_key=config.cloud_api_key,
                     api_secret=config.cloud_api_secret,
                     api_url=config.cloud_api_url,
@@ -92,22 +91,26 @@ class ASREngineFactory:
         """创建本地引擎的辅助方法"""
         if config.provider == ASRProvider.FUNASR:
             return FunASREngine(
-                model_name=config.local_model_path or "paraformer-zh",
-                device=config.device,
-                use_vad=config.use_vad,
-                use_punc=config.use_punctuation,
+                model_name=config.funasr_model,
+                vad_model=config.funasr_vad_model,
+                punc_model=config.funasr_punc_model,
                 language=language,
+                device=config.funasr_device,
             )
         elif config.provider == ASRProvider.WHISPER:
             return WhisperEngine(
-                model_name=config.local_model_path or "base",
-                device=config.device,
-                compute_type=config.compute_type,
-                use_faster_whisper=config.use_faster_whisper,
+                model_size=config.whisper_model,
                 language=language,
+                device=config.whisper_device,
+                compute_type=config.whisper_compute_type,
             )
         else:
             raise ValueError(f"Unknown provider: {config.provider}")
+
+
+def create_asr_engine(config: ASRConfig) -> ASREngine:
+    """Backward-compatible factory wrapper."""
+    return ASREngineFactory.create(config)
 
 
 # 全局引擎实例（单例模式）

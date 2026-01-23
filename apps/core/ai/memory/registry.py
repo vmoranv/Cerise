@@ -5,8 +5,17 @@ Registry for memory scoring plugins.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 
-from .scorers import KeywordOverlapScorer, MemoryScorer, RecencyScorer
+from .config import MemoryConfig
+from .scorers import (
+    EmotionImpactScorer,
+    ImportanceScorer,
+    KeywordOverlapScorer,
+    MemoryScorer,
+    RecencyScorer,
+    ReinforcementScorer,
+)
 
 
 @dataclass
@@ -23,8 +32,23 @@ class MemoryScorerRegistry:
         return [scorer for _, scorer in self._scorers]
 
     @classmethod
-    def default(cls) -> MemoryScorerRegistry:
+    def default(cls, config: MemoryConfig | None = None) -> MemoryScorerRegistry:
         registry = cls()
         registry.register(KeywordOverlapScorer(), priority=10)
-        registry.register(RecencyScorer(), priority=20)
+
+        scoring = config.scoring if config else None
+        half_life_seconds = scoring.recency_half_life_seconds if scoring else 1800
+        recency_weight = scoring.recency_weight if scoring else 1.0
+        registry.register(
+            RecencyScorer(half_life=timedelta(seconds=half_life_seconds), weight=recency_weight),
+            priority=20,
+        )
+
+        if scoring:
+            registry.register(ImportanceScorer(weight=scoring.importance_weight), priority=30)
+            registry.register(EmotionImpactScorer(weight=scoring.emotional_weight), priority=40)
+            registry.register(
+                ReinforcementScorer(weight=scoring.reinforcement_weight, max_access_count=scoring.max_access_count),
+                priority=50,
+            )
         return registry

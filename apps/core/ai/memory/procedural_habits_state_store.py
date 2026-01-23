@@ -4,10 +4,10 @@ Procedural habits state store.
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from ...infrastructure import StateStore
+from .time_utils import from_timestamp, now
 from .types import ProceduralHabit
 
 
@@ -27,7 +27,7 @@ class ProceduralHabitsStateStore:
         task_type: str,
         instruction: str,
     ) -> ProceduralHabit:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         habits = await self._load()
         existing_id = self._find_existing(habits, session_id, task_type, instruction)
         resolved_id = existing_id or habit_id
@@ -100,5 +100,5 @@ class ProceduralHabitsStateStore:
             session_id=entry.get("session_id", ""),
             task_type=entry.get("task_type", ""),
             instruction=entry.get("instruction", ""),
-            updated_at=datetime.fromtimestamp(float(entry.get("updated_at", 0.0))),
+            updated_at=from_timestamp(float(entry.get("updated_at", 0.0))),
         )

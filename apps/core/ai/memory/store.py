@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Protocol
 
 from ...infrastructure import StateStore
+from .time_utils import from_timestamp, now_timestamp
 from .types import MemoryRecord
 
 
@@ -31,6 +32,9 @@ class MemoryStore(Protocol):
     async def count(self, session_id: str | None = None) -> int:
         """Count memories."""
 
+    async def touch(self, record_id: str, *, accessed_at: datetime | None = None) -> None:
+        """Update access metadata for a record."""
+
 
 class InMemoryStore:
     """In-memory memory store with a bounded history."""
@@ -41,6 +45,10 @@ class InMemoryStore:
 
     async def add(self, record: MemoryRecord, expires_at: float | None = None) -> None:
         async with self._lock:
+            self._records = deque(
+                [(existing, exp) for existing, exp in self._records if existing.id != record.id],
+                maxlen=self._records.maxlen,
+            )
             self._records.append((record, expires_at))
 
     async def get(self, record_id: str) -> MemoryRecord | None:
@@ -75,8 +83,18 @@ class InMemoryStore:
                 return len(self._records)
             return sum(1 for record, _ in self._records if record.session_id == session_id)
 
+    async def touch(self, record_id: str, *, accessed_at: datetime | None = None) -> None:
+        async with self._lock:
+            self._purge_expired_locked()
+            updated: deque[tuple[MemoryRecord, float | None]] = deque(maxlen=self._records.maxlen)
+            for record, expires_at in self._records:
+                if record.id == record_id:
+                    record.touch(accessed_at)
+                updated.append((record, expires_at))
+            self._records = updated
+
     def _purge_expired_locked(self) -> None:
-        now = datetime.utcnow().timestamp()
+        now = now_timestamp()
         if not self._records:
             return
         self._records = deque(
@@ -146,6 +164,17 @@ class StateStoreMemoryStore:
             await self.delete(expired)
         return count
 
+    async def touch(self, record_id: str, *, accessed_at: datetime | None = None) -> None:
+        records = await self._load_records()
+        entry = records.get(record_id)
+        if not entry:
+            return
+        record = self._record_from_dict(entry)
+        record.touch(accessed_at)
+        expires_at = entry.get("expires_at")
+        records[record_id] = self._record_to_dict(record, expires_at)
+        await self._store.set(self._records_key, records)
+
     async def _load_records(self) -> dict[str, dict]:
         records = await self._store.get(self._records_key, {})
         if not isinstance(records, dict):
@@ -173,11 +202,11 @@ class StateStoreMemoryStore:
         record.id = data.get("id", record.id)
         created_at = data.get("created_at")
         if created_at:
-            record.created_at = datetime.fromtimestamp(float(created_at))
+            record.created_at = from_timestamp(float(created_at))
         return record
 
     def _is_expired(self, data: dict) -> bool:
         expires_at = data.get("expires_at")
         if expires_at is None:
             return False
-        return float(expires_at) <= datetime.utcnow().timestamp()
+        return float(expires_at) <= now_timestamp()

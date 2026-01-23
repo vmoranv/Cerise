@@ -14,6 +14,7 @@ from .engine_build import BuildMixin
 from .engine_ingest import IngestMixin
 from .engine_recall import RecallMixin
 from .engine_rerank import RerankMixin
+from .maintenance import MemoryMaintenance
 from .registry import MemoryScorerRegistry
 from .scorers import MemoryScorer
 from .sqlite_store import SqliteKnowledgeGraphStore
@@ -47,7 +48,7 @@ class MemoryEngine(BuildMixin, IngestMixin, RecallMixin, AssociationMixin, Reran
         self.config = config or load_memory_config()
         self.store = store or self._build_store(self.config)
         if scorers is None:
-            registry = registry or MemoryScorerRegistry.default()
+            registry = registry or MemoryScorerRegistry.default(self.config)
             scorers = registry.build()
         self.scorers = list(scorers)
         self.bus = bus
@@ -57,3 +58,9 @@ class MemoryEngine(BuildMixin, IngestMixin, RecallMixin, AssociationMixin, Reran
         self._retrievers = self._build_retrievers(self.config)
         self._compressor = self._build_compressor(self.config)
         self._vector_loaded = False
+
+    async def run_maintenance(self, *, session_id: str | None = None) -> dict[str, int]:
+        if not self.config:
+            return {"updated": 0, "deleted": 0}
+        maint = MemoryMaintenance(store=self.store, config=self.config)
+        return await maint.run(session_id=session_id)

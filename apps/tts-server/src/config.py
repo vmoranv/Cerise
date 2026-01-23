@@ -3,11 +3,14 @@
 支持本地推理和云端 API 两种模式
 """
 
+import logging
 import os
 from enum import Enum
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class InferenceMode(str, Enum):
@@ -37,6 +40,7 @@ class ASRConfig(BaseModel):
 
     provider: ASRProvider = ASRProvider.FUNASR
     mode: InferenceMode = InferenceMode.LOCAL
+    language: str = "auto"
 
     # FunASR 本地配置
     funasr_model: str = (
@@ -52,9 +56,21 @@ class ASRConfig(BaseModel):
     whisper_compute_type: str = "float16"  # float16, int8
 
     # 云端 API 配置
+    cloud_provider: str | None = None
     cloud_api_url: str | None = None
     cloud_api_key: str | None = None
+    cloud_api_secret: str | None = None
     cloud_api_model: str | None = None
+    cloud_region: str | None = None
+    cloud_timeout: float = 30.0
+
+    def get_model_name(self) -> str | None:
+        """Return the active model name based on provider."""
+        if self.provider == ASRProvider.WHISPER:
+            return self.whisper_model
+        if self.provider == ASRProvider.FUNASR:
+            return self.funasr_model
+        return self.cloud_api_model
 
 
 class TTSConfig(BaseModel):
@@ -66,8 +82,16 @@ class TTSConfig(BaseModel):
     # Genie-TTS 本地配置
     default_character: str = "mika"
     split_sentence: bool = True
+    device: str = "cpu"
+    local_model_path: str | None = None
+    characters: list[str] | None = None
+
+    # 输出配置
+    sample_rate: int = 32000
 
     # 云端 API 配置
+    cloud_provider: str | None = None
+    cloud_region: str | None = None
     cloud_api_url: str | None = None
     cloud_api_key: str | None = None
     cloud_voice_id: str | None = None
@@ -87,6 +111,8 @@ class WebSocketConfig(BaseModel):
     silence_duration_ms: int = 500  # 静音判定时长（毫秒）
 
     # 连接配置
+    max_connections: int = 100  # 最大连接数
+    heartbeat_interval: int = 30  # 心跳间隔（秒）
     ping_interval: int = 30  # ping 间隔（秒）
     ping_timeout: int = 10  # ping 超时（秒）
     max_message_size: int = 10485760  # 最大消息大小（10MB）
@@ -120,10 +146,13 @@ def load_config(config_path: str | None = None) -> ServerConfig:
 
     # 从配置文件加载
     if config_path and os.path.exists(config_path):
-        with open(config_path, encoding="utf-8") as f:
-            file_config = yaml.safe_load(f)
-            if file_config:
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                file_config = yaml.safe_load(f)
+            if isinstance(file_config, dict):
                 config = ServerConfig(**file_config)
+        except (yaml.YAMLError, ValidationError, TypeError, ValueError) as exc:
+            logger.warning("Failed to load config from %s: %s", config_path, exc)
 
     # 环境变量覆盖
     if os.getenv("VOICE_SERVER_ASR_MODE"):

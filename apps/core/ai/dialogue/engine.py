@@ -16,6 +16,7 @@ from ...contracts.events import (
 from ...infrastructure import EventBus
 from ...services.ports import MemoryService
 from ..providers import ChatOptions, ProviderRegistry
+from ..providers import Message as ProviderMessage
 from .context import build_context_messages
 from .ports import AbilityRegistryProtocol, ProviderRegistryProtocol
 from .session import Session
@@ -148,6 +149,56 @@ class DialogueEngine(StreamChatMixin):
                 model=response.model,
             ),
             source="dialogue_engine",
+        )
+
+        return response_content
+
+    async def proactive_chat(
+        self,
+        session: Session,
+        *,
+        prompt: str,
+        provider: str | None = None,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        use_tools: bool = False,
+    ) -> str:
+        """Generate a proactive assistant message without adding a user message."""
+        if use_tools:
+            logger.warning("Proactive chat does not support tool calls; skipping tools.")
+
+        provider_name = provider or self.default_provider
+        ai_provider = self._provider_registry.get(provider_name)
+        if not ai_provider:
+            raise ValueError(f"Provider not found: {provider_name}")
+
+        messages = await build_context_messages(
+            session=session,
+            query=prompt,
+            memory_service=self._memory_service,
+            memory_recall=self._memory_recall,
+        )
+        messages.append(ProviderMessage(role="user", content=prompt))
+
+        options = ChatOptions(
+            model=model or self.default_model,
+            temperature=temperature if temperature is not None else 0.7,
+            max_tokens=max_tokens or 1024,
+        )
+
+        response = await ai_provider.chat(messages, options)
+        response_content = response.content
+        session.add_assistant_message(response_content)
+
+        await self._message_bus.emit(
+            DIALOGUE_ASSISTANT_RESPONSE,
+            build_dialogue_assistant_response(
+                session_id=session.id,
+                content=response_content,
+                model=response.model,
+            ),
+            source="proactive_chat",
         )
 
         return response_content

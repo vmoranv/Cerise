@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from .file_utils import load_config_data, resolve_config_path
 from .schemas import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,13 @@ class AppConfigLoaderMixin:
 
     def load_app_config(self) -> AppConfig:
         """Load main app configuration."""
-        config_path = self.data_dir / "config.yaml"
+        config_path = resolve_config_path(self.data_dir / "config.yaml")
 
-        if not config_path.exists():
+        if not config_path.exists() and config_path.suffix != ".toml":
             self._create_default_app_config(config_path)
 
         try:
-            with open(config_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
+            data = load_config_data(config_path)
             self._app_config = AppConfig(**data)
         except Exception as exc:
             logger.warning("Failed to load config: %s, using defaults", exc)

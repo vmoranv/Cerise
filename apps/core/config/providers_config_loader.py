@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from .file_utils import load_config_data, resolve_config_path
 from .schemas import ProviderConfig, ProvidersConfig
 
 logger = logging.getLogger(__name__)
@@ -19,15 +20,14 @@ class ProvidersConfigLoaderMixin:
 
     def load_providers_config(self) -> ProvidersConfig:
         """Load providers configuration."""
-        config_path = self.data_dir / "providers.yaml"
+        config_path = resolve_config_path(self.data_dir / "providers.yaml")
 
         if not config_path.exists():
             self._providers_config = ProvidersConfig()
             return self._providers_config
 
         try:
-            with open(config_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
+            data = load_config_data(config_path)
             self._providers_config = ProvidersConfig(**data)
         except Exception as exc:
             logger.warning("Failed to load providers: %s, using defaults", exc)

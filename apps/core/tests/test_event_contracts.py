@@ -91,3 +91,42 @@ def test_memory_habit_recorded_payload() -> None:
 def test_memory_emotional_snapshot_attached_payload() -> None:
     payload = ev.build_memory_emotional_snapshot_attached("record-1", "session-1", {"joy": 0.8})
     assert payload == {"record_id": "record-1", "session_id": "session-1", "emotion": {"joy": 0.8}}
+
+
+def test_operation_window_connected_payload() -> None:
+    payload = ev.build_operation_window_connected(10, 800, 600)
+    assert payload == {"hwnd": 10, "width": 800, "height": 600}
+
+
+def test_operation_window_disconnected_payload() -> None:
+    payload = ev.build_operation_window_disconnected(10)
+    assert payload == {"hwnd": 10}
+
+
+def test_operation_input_performed_payload() -> None:
+    payload = ev.build_operation_input_performed("click", 10, {"x": 1, "y": 2})
+    assert payload == {"action": "click", "hwnd": 10, "params": {"x": 1, "y": 2}}
+
+
+def test_operation_template_matched_payload() -> None:
+    payload = ev.build_operation_template_matched("button.png", 0.8, {"x": 1, "y": 2})
+    assert payload == {"template": "button.png", "threshold": 0.8, "box": {"x": 1, "y": 2}}
+
+
+def test_operation_action_completed_payload() -> None:
+    payload = ev.build_operation_action_completed(
+        action="Click",
+        action_type="ClickAction",
+        status="success",
+        message="ok",
+        duration=0.1,
+        data={"x": 1},
+    )
+    assert payload == {
+        "action": "Click",
+        "action_type": "ClickAction",
+        "status": "success",
+        "message": "ok",
+        "duration": 0.1,
+        "data": {"x": 1},
+    }

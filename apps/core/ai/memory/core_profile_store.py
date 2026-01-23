@@ -5,9 +5,9 @@ Core profile stores.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
+from .time_utils import from_timestamp, now
 from .types import CoreProfile
 
 
@@ -53,7 +53,7 @@ class CoreProfileStore:
         summary: str,
         session_id: str | None = None,
     ) -> CoreProfile:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         cursor = self._conn.cursor()
         cursor.execute(
             """
@@ -107,7 +107,7 @@ class CoreProfileStore:
             profile_id=row["profile_id"],
             summary=row["summary"],
             session_id=row["session_id"],
-            updated_at=datetime.fromtimestamp(row["updated_at"]),
+            updated_at=from_timestamp(row["updated_at"]),
         )
 
     def _trim(self, cursor: sqlite3.Cursor) -> None:

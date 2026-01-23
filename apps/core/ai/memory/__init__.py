@@ -2,11 +2,27 @@
 Memory module.
 """
 
-from .config import MemoryConfig, load_memory_config
+from .config import (
+    MemoryConfig,
+    MemoryTimeConfig,
+    build_memory_config,
+    config_to_dict,
+    load_memory_config,
+    save_memory_config,
+)
+from .context_builder import MemoryContextBuilder
 from .engine import MemoryEngine
-from .pipeline import MemoryPipeline, RuleBasedMemoryExtractor
+from .extraction import CompositeMemoryExtractor, LLMMemoryExtractor, RuleBasedMemoryExtractor, build_memory_extractor
+from .maintenance import MemoryMaintenance
+from .pipeline import MemoryPipeline
 from .registry import MemoryScorerRegistry
-from .scorers import KeywordOverlapScorer, RecencyScorer
+from .scorers import (
+    EmotionImpactScorer,
+    ImportanceScorer,
+    KeywordOverlapScorer,
+    RecencyScorer,
+    ReinforcementScorer,
+)
 from .sqlite_store import SqliteMemoryStore
 from .store import InMemoryStore, MemoryStore, StateStoreMemoryStore
 from .types import (
@@ -32,12 +48,24 @@ __all__ = [
     "MemoryEngine",
     "MemoryEventHandler",
     "MemoryPipeline",
+    "MemoryMaintenance",
     "RuleBasedMemoryExtractor",
+    "LLMMemoryExtractor",
+    "CompositeMemoryExtractor",
+    "build_memory_extractor",
+    "MemoryContextBuilder",
     "MemoryConfig",
+    "MemoryTimeConfig",
+    "build_memory_config",
+    "config_to_dict",
     "load_memory_config",
+    "save_memory_config",
     "MemoryScorerRegistry",
     "KeywordOverlapScorer",
     "RecencyScorer",
+    "ImportanceScorer",
+    "EmotionImpactScorer",
+    "ReinforcementScorer",
     "InMemoryStore",
     "MemoryStore",
     "StateStoreMemoryStore",

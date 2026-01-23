@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 
+from .file_utils import load_config_data, resolve_config_path
 from .schemas import CharacterConfig
 
 
@@ -14,16 +15,16 @@ class CharacterConfigLoaderMixin:
 
     def load_character_config(self, name: str = "default") -> CharacterConfig:
         """Load character configuration."""
-        config_path = self.data_dir / "characters" / f"{name}.yaml"
+        base_path = self.data_dir / "characters" / f"{name}.yaml"
+        config_path = resolve_config_path(base_path)
 
         if not config_path.exists():
-            if name == "default":
+            if name == "default" and config_path.suffix != ".toml":
                 self._create_default_character_config(config_path)
             else:
                 raise FileNotFoundError(f"Character not found: {name}")
 
-        with open(config_path, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+        data = load_config_data(config_path)
 
         return CharacterConfig(**data)
 
@@ -38,7 +39,9 @@ class CharacterConfigLoaderMixin:
     def list_characters(self) -> list[str]:
         """List available characters."""
         chars_dir = self.data_dir / "characters"
-        return [p.stem for p in chars_dir.glob("*.yaml")]
+        names = {p.stem for p in chars_dir.glob("*.yaml")}
+        names.update(p.stem for p in chars_dir.glob("*.toml"))
+        return sorted(names)
 
     def _create_default_character_config(self, path: Path) -> None:
         """Create default character config."""

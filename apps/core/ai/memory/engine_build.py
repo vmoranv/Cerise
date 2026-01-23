@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 
 from ...config.loader import get_data_dir
-from .compression import MemoryCompressor
+from .compression import MemoryCompressor, ProviderSummaryProvider
 from .config import MemoryConfig
 from .retrieval import BM25Retriever, KnowledgeGraphRetriever, VectorRetriever
 from .sqlite_store import SqliteKnowledgeGraphStore, SqliteMemoryStore
@@ -91,10 +91,19 @@ class BuildMixin:
     def _build_compressor(self, config: MemoryConfig) -> MemoryCompressor | None:
         if not config.compression.enabled:
             return None
+        summary_provider = None
+        if config.compression.summary_provider_id:
+            summary_provider = ProviderSummaryProvider(
+                provider_id=config.compression.summary_provider_id,
+                model=config.compression.summary_model or None,
+                temperature=config.compression.summary_temperature,
+                max_tokens=config.compression.summary_max_tokens,
+            )
         return MemoryCompressor(
             threshold=config.compression.threshold,
             window=config.compression.window,
             max_chars=config.compression.max_chars,
+            summary_provider=summary_provider,
         )
 
     async def prepare(self) -> None:

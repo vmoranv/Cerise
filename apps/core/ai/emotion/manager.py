@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from ...config.file_utils import resolve_config_path
 from ...config.loader import get_data_dir
 from ...infrastructure import EventBus
 from .config_models import EmotionConfig
@@ -24,7 +25,8 @@ class EmotionConfigManager(ConfigSourceMixin, LexiconMixin, RulesMixin):
 
     def __init__(self, config_path: str | Path | None = None, bus: EventBus | None = None):
         self._data_dir = Path(get_data_dir())
-        self._config_path = Path(config_path) if config_path else self._data_dir / "emotion.yaml"
+        base_path = Path(config_path) if config_path else self._data_dir / "emotion.yaml"
+        self._config_path = resolve_config_path(base_path)
         self._bus = bus
         self._base_config = EmotionConfig()
         self._base_mtime = 0.0

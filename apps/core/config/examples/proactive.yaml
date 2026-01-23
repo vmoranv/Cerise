@@ -1,0 +1,35 @@
+enabled: false
+state_path: ""           # empty = ~/.cerise/proactive/state.json
+timezone: ""             # empty = system local time
+apply_to_all_sessions: false
+session_allowlist: []
+
+prompt: |-
+  [System Task: Proactive Chat]
+  You are initiating a proactive message to the user.
+  Current time: {{current_time}}.
+  Unanswered count: {{unanswered_count}}.
+  Review recent context and send a short, natural opener.
+
+provider_id: ""          # optional provider id
+model: ""                # optional model override
+temperature: 0.7
+max_tokens: 512
+
+schedule:
+  min_interval_minutes: 30
+  max_interval_minutes: 900
+  quiet_hours: "1-7"
+  max_unanswered_times: 4
+
+auto_trigger:
+  enabled: false
+  after_minutes: 5
+
+sessions:
+  - session_id: "session-123"
+    enabled: true
+    prompt: "Hey, just checking in. How are you doing?"
+    schedule:
+      min_interval_minutes: 20
+      max_interval_minutes: 120

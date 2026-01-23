@@ -9,8 +9,9 @@ from pathlib import Path
 
 from ..abilities import AbilityRegistry
 from ..ai import DialogueEngine, EmotionAnalyzer
+from ..ai.dialogue import ProactiveChatService, load_proactive_config
 from ..ai.emotion import EmotionConfigManager
-from ..ai.memory import MemoryEngine, MemoryPipeline, RuleBasedMemoryExtractor, load_memory_config
+from ..ai.memory import MemoryContextBuilder, MemoryEngine, MemoryPipeline, build_memory_extractor, load_memory_config
 from ..ai.memory.layer_store import (
     build_core_profile_store,
     build_procedural_habits_store,
@@ -22,6 +23,7 @@ from ..config import get_config_loader
 from ..events import Live2DEmotionHandler, MemoryEventHandler, MemoryLayerEventHandler
 from ..infrastructure import EventBus, StateStore, set_default_bus
 from ..l2d import Live2DService
+from ..operation import OperationService
 from ..plugins import PluginBridge, PluginManager
 from ..runtime import build_event_bus
 from ..services import (
@@ -63,6 +65,8 @@ class AppServices:
     emotion_state: EmotionStateMachine
     personality: PersonalityModel
     dialogue_engine: DialogueEngine
+    proactive_chat: ProactiveChatService | None = None
+    operation: OperationService | None = None
 
 
 async def build_services() -> AppServices:
@@ -77,12 +81,14 @@ async def build_services() -> AppServices:
 
     personality = PersonalityModel.create_default()
 
+    emotion_manager = EmotionConfigManager(bus=message_bus)
+    emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
+    emotion_service = LocalEmotionService(emotion_analyzer)
+    emotion_state = EmotionStateMachine(bus=message_bus)
+
     memory_config = load_memory_config()
     memory_engine = MemoryEngine(config=memory_config, bus=message_bus)
     await memory_engine.prepare()
-    memory_service = LocalMemoryService(memory_engine)
-    memory_events = MemoryEventHandler(message_bus, memory_service)
-    memory_events.attach()
 
     core_profile_store = build_core_profile_store(memory_config.l1_core)
     semantic_facts_store = build_semantic_facts_store(memory_config.l2_semantic)
@@ -98,14 +104,25 @@ async def build_services() -> AppServices:
     )
     memory_layer_events.attach()
 
-    memory_extractor = RuleBasedMemoryExtractor()
+    context_builder = MemoryContextBuilder(
+        config=memory_config.context,
+        core_profiles=core_profiles,
+        facts=semantic_facts,
+        habits=procedural_habits,
+    )
+
+    memory_service = LocalMemoryService(memory_engine, context_builder=context_builder)
+    memory_events = MemoryEventHandler(
+        message_bus,
+        memory_service,
+        emotion=emotion_service,
+        enable_emotion_snapshot=memory_config.pipeline.emotion_on_ingest,
+    )
+    memory_events.attach()
+
+    memory_extractor = build_memory_extractor(memory_config)
     memory_pipeline = MemoryPipeline(bus=message_bus, store=memory_engine.store, extractor=memory_extractor)
     memory_pipeline.attach()
-
-    emotion_manager = EmotionConfigManager(bus=message_bus)
-    emotion_analyzer = EmotionAnalyzer(manager=emotion_manager)
-    emotion_service = LocalEmotionService(emotion_analyzer)
-    emotion_state = EmotionStateMachine(bus=message_bus)
 
     plugin_manager = PluginManager(_resolve_plugins_dir())
     await _load_plugins(plugin_manager)
@@ -127,6 +144,15 @@ async def build_services() -> AppServices:
         ability_registry=AbilityRegistry,
     )
 
+    proactive_config = load_proactive_config()
+    proactive_chat = ProactiveChatService(
+        bus=message_bus,
+        dialogue_engine=dialogue_engine,
+        config=proactive_config,
+    )
+    proactive_chat.attach()
+    await proactive_chat.start()
+
     return AppServices(
         message_bus=message_bus,
         state_store=state_store,
@@ -147,11 +173,17 @@ async def build_services() -> AppServices:
         emotion_state=emotion_state,
         personality=personality,
         dialogue_engine=dialogue_engine,
+        proactive_chat=proactive_chat,
+        operation=OperationService(bus=message_bus),
     )
 
 
 async def shutdown_services(services: AppServices) -> None:
     """Shutdown services in reverse order."""
+    if services.operation is not None:
+        services.operation.close()
+    if services.proactive_chat is not None:
+        await services.proactive_chat.shutdown()
     await services.plugin_manager.unload_all()
     await services.message_bus.stop()
 

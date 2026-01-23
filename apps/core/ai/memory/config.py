@@ -10,14 +10,16 @@ from typing import Any
 
 import yaml
 
+from ...config.file_utils import load_config_data, resolve_config_path
 from ...config.loader import get_data_dir
+from .time_utils import set_default_timezone
 
 
 @dataclass
 class MemoryStoreConfig:
     """Storage configuration."""
 
-    backend: str = "sqlite"  # sqlite | state
+    backend: str = "sqlite"  # sqlite | state | memory
     sqlite_path: str = ""
     state_path: str = ""
     ttl_seconds: int = 0
@@ -63,6 +65,77 @@ class MemoryCompressionConfig:
     threshold: int = 80
     window: int = 40
     max_chars: int = 1000
+    summary_provider_id: str = ""
+    summary_model: str = ""
+    summary_temperature: float = 0.2
+    summary_max_tokens: int = 400
+
+
+@dataclass
+class MemoryTimeConfig:
+    """Time and formatting configuration."""
+
+    timezone: str = "UTC"
+    timestamp_format: str = "%Y-%m-%d %H:%M"
+
+
+@dataclass
+class MemoryContextConfig:
+    """Context assembly configuration."""
+
+    enabled: bool = True
+    max_items: int = 12
+    layer_weights: dict[str, float] = field(
+        default_factory=lambda: {
+            "core": 1.0,
+            "semantic": 1.0,
+            "procedural": 1.0,
+            "episodic": 2.0,
+        }
+    )
+    max_per_layer: dict[str, int] = field(default_factory=dict)
+    include_tags: bool = True
+    include_category: bool = True
+    include_emotion: bool = True
+    include_scores: bool = False
+
+
+@dataclass
+class MemoryScoringConfig:
+    """Scoring configuration."""
+
+    recency_half_life_seconds: int = 1800
+    recency_weight: float = 1.0
+    importance_weight: float = 0.15
+    emotional_weight: float = 0.1
+    reinforcement_weight: float = 0.05
+    max_access_count: int = 20
+    emotion_filter_enabled: bool = False
+    emotion_min_intensity: float = 0.2
+
+
+@dataclass
+class MemoryPipelineConfig:
+    """Extraction pipeline configuration."""
+
+    extractor: str = "rule"  # rule | llm | composite
+    llm_provider_id: str = ""
+    llm_model: str = ""
+    llm_temperature: float = 0.2
+    llm_max_tokens: int = 800
+    emotion_on_ingest: bool = True
+    task_type_mapping: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class MemoryDreamingConfig:
+    """Background maintenance configuration."""
+
+    enabled: bool = False
+    max_records: int = 200
+    decay_half_life_seconds: int = 86400
+    min_importance: float = 0.1
+    prune_score_threshold: float = 0.05
 
 
 @dataclass
@@ -73,6 +146,11 @@ class MemoryRecallConfig:
     top_k: int = 8
     min_score: float = 0.05
     rrf_k: int = 60
+    touch_on_recall: bool = True
+    random_enabled: bool = False
+    random_k: int = 1
+    random_probability: float = 0.1
+    trigger_keywords: list[str] = field(default_factory=lambda: ["random", "surprise", "想起", "突然想到"])
 
 
 @dataclass
@@ -115,6 +193,7 @@ class MemoryLayerStoreConfig:
 class MemoryConfig:
     """Overall memory configuration."""
 
+    time: MemoryTimeConfig = field(default_factory=MemoryTimeConfig)
     store: MemoryStoreConfig = field(default_factory=MemoryStoreConfig)
     l1_core: MemoryLayerStoreConfig = field(default_factory=MemoryLayerStoreConfig)
     l2_semantic: MemoryLayerStoreConfig = field(default_factory=MemoryLayerStoreConfig)
@@ -123,9 +202,13 @@ class MemoryConfig:
     vector: MemoryVectorConfig = field(default_factory=MemoryVectorConfig)
     kg: MemoryKGConfig = field(default_factory=MemoryKGConfig)
     compression: MemoryCompressionConfig = field(default_factory=MemoryCompressionConfig)
+    context: MemoryContextConfig = field(default_factory=MemoryContextConfig)
+    scoring: MemoryScoringConfig = field(default_factory=MemoryScoringConfig)
+    pipeline: MemoryPipelineConfig = field(default_factory=MemoryPipelineConfig)
     recall: MemoryRecallConfig = field(default_factory=MemoryRecallConfig)
     rerank: MemoryRerankConfig = field(default_factory=MemoryRerankConfig)
     association: MemoryAssociationConfig = field(default_factory=MemoryAssociationConfig)
+    dreaming: MemoryDreamingConfig = field(default_factory=MemoryDreamingConfig)
 
 
 def _merge_dict(base: dict, override: dict) -> dict:
@@ -138,21 +221,11 @@ def _merge_dict(base: dict, override: dict) -> dict:
     return result
 
 
-def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
-    """Load memory configuration from yaml."""
-    if path is None:
-        data_dir = get_data_dir()
-        path = data_dir / "memory.yaml"
-    path = Path(path)
-
-    defaults = MemoryConfig()
-    data: dict[str, Any] = {}
-    if path.exists():
-        with open(path, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-
-    merged = _merge_dict(defaults_to_dict(defaults), data)
-    config = MemoryConfig(
+def build_memory_config(data: dict[str, Any], *, defaults: MemoryConfig | None = None) -> MemoryConfig:
+    base = defaults or MemoryConfig()
+    merged = _merge_dict(defaults_to_dict(base), data)
+    return MemoryConfig(
+        time=MemoryTimeConfig(**merged.get("time", {})),
         store=MemoryStoreConfig(**merged.get("store", {})),
         l1_core=MemoryLayerStoreConfig(**merged.get("l1_core", {})),
         l2_semantic=MemoryLayerStoreConfig(**merged.get("l2_semantic", {})),
@@ -161,10 +234,27 @@ def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
         vector=MemoryVectorConfig(**merged.get("vector", {})),
         kg=MemoryKGConfig(**merged.get("kg", {})),
         compression=MemoryCompressionConfig(**merged.get("compression", {})),
+        context=MemoryContextConfig(**merged.get("context", {})),
+        scoring=MemoryScoringConfig(**merged.get("scoring", {})),
+        pipeline=MemoryPipelineConfig(**merged.get("pipeline", {})),
         recall=MemoryRecallConfig(**merged.get("recall", {})),
         rerank=MemoryRerankConfig(**merged.get("rerank", {})),
         association=MemoryAssociationConfig(**merged.get("association", {})),
+        dreaming=MemoryDreamingConfig(**merged.get("dreaming", {})),
     )
+
+
+def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
+    """Load memory configuration from yaml or toml."""
+    if path is None:
+        data_dir = get_data_dir()
+        path = data_dir / "memory.yaml"
+    path = resolve_config_path(Path(path))
+
+    defaults = MemoryConfig()
+    data: dict[str, Any] = load_config_data(path)
+
+    config = build_memory_config(data, defaults=defaults)
 
     if not config.store.sqlite_path:
         config.store.sqlite_path = str(Path(get_data_dir()) / "memory" / "memory.db")
@@ -174,12 +264,28 @@ def load_memory_config(path: str | Path | None = None) -> MemoryConfig:
         config.vector.persist_path = str(Path(get_data_dir()) / "memory" / "vectors")
 
     _apply_layer_defaults(config)
+    set_default_timezone(config.time.timezone)
 
     return config
 
 
+def save_memory_config(config: MemoryConfig, path: str | Path | None = None) -> None:
+    """Save memory configuration to yaml."""
+    if path is None:
+        path = Path(get_data_dir()) / "memory.yaml"
+    path = Path(path)
+    data = defaults_to_dict(config)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
+
+
+def config_to_dict(config: MemoryConfig) -> dict[str, Any]:
+    return defaults_to_dict(config)
+
+
 def defaults_to_dict(config: MemoryConfig) -> dict[str, Any]:
     return {
+        "time": config.time.__dict__,
         "store": config.store.__dict__,
         "l1_core": config.l1_core.__dict__,
         "l2_semantic": config.l2_semantic.__dict__,
@@ -188,9 +294,13 @@ def defaults_to_dict(config: MemoryConfig) -> dict[str, Any]:
         "vector": config.vector.__dict__,
         "kg": config.kg.__dict__,
         "compression": config.compression.__dict__,
+        "context": config.context.__dict__,
+        "scoring": config.scoring.__dict__,
+        "pipeline": config.pipeline.__dict__,
         "recall": config.recall.__dict__,
         "rerank": config.rerank.__dict__,
         "association": config.association.__dict__,
+        "dreaming": config.dreaming.__dict__,
     }
 
 

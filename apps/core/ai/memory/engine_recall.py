@@ -4,7 +4,7 @@ Memory recall helpers.
 
 from __future__ import annotations
 
-from datetime import datetime
+import random
 
 from .compression import MemoryCompressor
 from .config import MemoryConfig
@@ -12,7 +12,8 @@ from .retrieval import rrf_fuse
 from .scorers import MemoryScorer
 from .sqlite_store import SqliteKnowledgeGraphStore
 from .store import MemoryStore
-from .types import MemoryResult
+from .time_utils import format_timestamp, now, now_timestamp
+from .types import MemoryRecord, MemoryResult
 
 
 class RecallMixin:
@@ -49,11 +50,17 @@ class RecallMixin:
         if self.config.association.enabled:
             min_score = min(min_score, self.config.association.min_score)
         filtered = self._filter_results(fused, min_score)
+        if self.config and self.config.scoring.emotion_filter_enabled:
+            filtered = self._filter_by_emotion(filtered, self.config.scoring.emotion_min_intensity)
         rescored = self._apply_scorers(query, filtered)
         reranked = await self._rerank_results(query, rescored)
         reranked.sort(key=lambda item: item.score, reverse=True)
+        reranked = await self._maybe_random_recall(query, reranked, session_id)
         filled = await self._fill_with_recent(reranked, limit, session_id)
-        return filled[:limit]
+        results = filled[:limit]
+        if self.config and self.config.recall.touch_on_recall:
+            await self._touch_results(results)
+        return results
 
     def format_context(self, results: list[MemoryResult]) -> str:
         """Format memory results for prompt injection."""
@@ -65,7 +72,8 @@ class RecallMixin:
             content = " ".join(record.content.split())
             if len(content) > 200:
                 content = content[:197].rstrip() + "..."
-            timestamp = record.created_at.strftime("%Y-%m-%d %H:%M")
+            timestamp_format = self.config.time.timestamp_format if self.config else "%Y-%m-%d %H:%M"
+            timestamp = format_timestamp(record.created_at, timestamp_format)
             lines.append(f"{idx}. ({record.role} @ {timestamp}) {content}")
         return "\n".join(lines)
 
@@ -94,6 +102,28 @@ class RecallMixin:
             seen.add(key)
             filtered.append(item)
         return filtered
+
+    def _filter_by_emotion(self, results: list[MemoryResult], min_intensity: float) -> list[MemoryResult]:
+        if min_intensity <= 0:
+            return results
+        filtered: list[MemoryResult] = []
+        for item in results:
+            if self._emotion_passes(item.record, min_intensity):
+                filtered.append(item)
+        return filtered
+
+    def _emotion_passes(self, record: MemoryRecord, min_intensity: float) -> bool:
+        if min_intensity <= 0:
+            return True
+        emotion = record.emotion
+        if not emotion:
+            return True
+        intensity = emotion.get("intensity", emotion.get("confidence", 0.0))
+        try:
+            intensity_value = float(intensity)
+        except (TypeError, ValueError):
+            intensity_value = 0.0
+        return intensity_value >= min_intensity
 
     def _apply_scorers(self, query: str, results: list[MemoryResult]) -> list[MemoryResult]:
         if not self.scorers:
@@ -136,6 +166,38 @@ class RecallMixin:
         merged.sort(key=lambda item: item.score, reverse=True)
         return merged + tail
 
+    async def _maybe_random_recall(
+        self,
+        query: str,
+        results: list[MemoryResult],
+        session_id: str | None,
+    ) -> list[MemoryResult]:
+        if not self.config:
+            return results
+        cfg = self.config.recall
+        if not cfg.random_enabled or cfg.random_k <= 0:
+            return results
+        lowered = query.lower()
+        triggered = any(keyword.lower() in lowered for keyword in cfg.trigger_keywords)
+        if not triggered and random.random() > cfg.random_probability:
+            return results
+        random_results = await self._random_recall(session_id, cfg.random_k)
+        if not random_results:
+            return results
+        fused = rrf_fuse([results, random_results], k=self.config.recall.rrf_k)
+        fused.sort(key=lambda item: item.score, reverse=True)
+        return fused
+
+    async def _random_recall(self, session_id: str | None, k: int) -> list[MemoryResult]:
+        records = await self.store.list(session_id=session_id)
+        if not records:
+            return []
+        sample_size = min(len(records), max(k, 0))
+        if sample_size <= 0:
+            return []
+        sampled = random.sample(records, sample_size)
+        return [MemoryResult(record=record, score=0.01) for record in sampled]
+
     async def _enforce_session_limits(self, session_id: str) -> None:
         if not self.config:
             return
@@ -162,14 +224,14 @@ class RecallMixin:
         to_compress = self._compressor.select_records(records)
         if not to_compress:
             return
-        summary = self._compressor.compress(to_compress)
+        summary = await self._compressor.compress_async(to_compress)
         await self.store.delete([record.id for record in to_compress])
         await self.store.add(summary, expires_at=self._summary_expiry())
 
     def _summary_expiry(self) -> float | None:
         if not self.config or self.config.store.ttl_seconds <= 0:
             return None
-        return datetime.utcnow().timestamp() + self.config.store.ttl_seconds
+        return now_timestamp() + self.config.store.ttl_seconds
 
     async def _fill_with_recent(
         self,
@@ -181,12 +243,24 @@ class RecallMixin:
             return results
         records = await self.store.list(session_id=session_id)
         records.sort(key=lambda record: record.created_at, reverse=True)
+        min_intensity = None
+        if self.config and self.config.scoring.emotion_filter_enabled:
+            min_intensity = self.config.scoring.emotion_min_intensity
         seen_ids = {item.record.id for item in results}
         for record in records:
             if len(results) >= limit:
                 break
             if record.id in seen_ids:
                 continue
+            if min_intensity is not None and not self._emotion_passes(record, min_intensity):
+                continue
             results.append(MemoryResult(record=record, score=0.01))
             seen_ids.add(record.id)
         return results
+
+    async def _touch_results(self, results: list[MemoryResult]) -> None:
+        if not results:
+            return
+        accessed_at = now()
+        for item in results:
+            await self.store.touch(item.record.id, accessed_at=accessed_at)

@@ -5,9 +5,9 @@ Procedural habits stores.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
+from .time_utils import from_timestamp, now
 from .types import ProceduralHabit
 
 
@@ -61,7 +61,7 @@ class ProceduralHabitsStore:
         task_type: str,
         instruction: str,
     ) -> ProceduralHabit:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         cursor = self._conn.cursor()
         cursor.execute(
             """
@@ -121,7 +121,7 @@ class ProceduralHabitsStore:
             session_id=row["session_id"],
             task_type=row["task_type"],
             instruction=row["instruction"],
-            updated_at=datetime.fromtimestamp(row["updated_at"]),
+            updated_at=from_timestamp(row["updated_at"]),
         )
 
     def _trim(self, cursor: sqlite3.Cursor) -> None:

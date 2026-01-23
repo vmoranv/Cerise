@@ -10,6 +10,8 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
+from .time_utils import ensure_timezone, from_timestamp, now
+
 
 class MemoryLayer(StrEnum):
     """Memory layers for storage and recall."""
@@ -65,14 +67,15 @@ def _coerce_datetime(value: Any) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value
+        return ensure_timezone(value)
     if isinstance(value, (int, float)):
-        return datetime.utcfromtimestamp(float(value))
+        return from_timestamp(float(value))
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value)
+            parsed = datetime.fromisoformat(value)
         except ValueError:
             return None
+        return ensure_timezone(parsed)
     return None
 
 
@@ -93,8 +96,16 @@ class MemoryRecord:
     access_count: int | None = None
     emotion: dict[str, float] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now)
     id: str = field(default_factory=lambda: str(uuid4()))
+
+    def touch(self, accessed_at: datetime | None = None) -> None:
+        """Update access metadata for reinforcement."""
+        current_time = ensure_timezone(accessed_at) if accessed_at else now()
+        self.last_accessed = current_time
+        self.access_count = (self.access_count or 0) + 1
+        self.metadata["last_accessed"] = current_time.isoformat()
+        self.metadata["access_count"] = self.access_count
 
     def __post_init__(self) -> None:
         if not isinstance(self.metadata, dict):

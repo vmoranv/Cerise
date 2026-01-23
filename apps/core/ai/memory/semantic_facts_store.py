@@ -5,9 +5,9 @@ Semantic facts stores.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 
+from .time_utils import from_timestamp, now
 from .types import SemanticFact
 
 
@@ -63,7 +63,7 @@ class SemanticFactsStore:
         predicate: str,
         object: str,
     ) -> SemanticFact:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         cursor = self._conn.cursor()
         cursor.execute(
             """
@@ -126,7 +126,7 @@ class SemanticFactsStore:
             subject=row["subject"],
             predicate=row["predicate"],
             object=row["object_value"],
-            updated_at=datetime.fromtimestamp(row["updated_at"]),
+            updated_at=from_timestamp(row["updated_at"]),
         )
 
     def _trim(self, cursor: sqlite3.Cursor) -> None:

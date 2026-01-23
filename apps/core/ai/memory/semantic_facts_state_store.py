@@ -4,10 +4,10 @@ Semantic facts state store.
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from ...infrastructure import StateStore
+from .time_utils import from_timestamp, now
 from .types import SemanticFact
 
 
@@ -28,7 +28,7 @@ class SemanticFactsStateStore:
         predicate: str,
         object: str,
     ) -> SemanticFact:
-        updated_at = datetime.utcnow()
+        updated_at = now()
         facts = await self._load()
         existing_id = self._find_existing(facts, session_id, subject, predicate)
         resolved_id = existing_id or fact_id
@@ -98,5 +98,5 @@ class SemanticFactsStateStore:
             subject=entry.get("subject", ""),
             predicate=entry.get("predicate", ""),
             object=entry.get("object", ""),
-            updated_at=datetime.fromtimestamp(float(entry.get("updated_at", 0.0))),
+            updated_at=from_timestamp(float(entry.get("updated_at", 0.0))),
         )

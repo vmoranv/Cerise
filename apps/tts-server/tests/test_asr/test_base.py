@@ -1,10 +1,31 @@
-"""
-ASR 基类测试
-"""
+"""ASR 基类测试"""
 
 import pytest
 
-from src.asr.base import ASREngine, ASRResult
+from src.asr.base import ASREngine, ASRLanguage, ASRResult, AudioChunk
+
+
+class DummyASREngine(ASREngine):
+    """用于测试的具体 ASR 引擎实现"""
+
+    async def load(self) -> None:
+        self._is_loaded = True
+
+    async def unload(self) -> None:
+        self._is_loaded = False
+
+    async def transcribe(
+        self,
+        audio: bytes,
+        sample_rate: int = 16000,
+        language: ASRLanguage | None = None,
+    ) -> ASRResult:
+        lang = language or self.language
+        return ASRResult(text="测试转录结果", language=lang.value, confidence=0.95)
+
+    async def transcribe_stream(self, audio_stream, language: ASRLanguage | None = None):
+        yield ASRResult(text="流式结果1", language="zh", is_final=False)
+        yield ASRResult(text="流式结果2", language="zh", is_final=True)
 
 
 class TestASRResult:
@@ -12,124 +33,70 @@ class TestASRResult:
 
     def test_create_result(self):
         """测试创建结果"""
-        result = ASRResult(
-            text="你好世界",
-            language="zh",
-            confidence=0.95,
-            duration=1.5,
-        )
+        result = ASRResult(text="你好世界", language="zh", confidence=0.95)
         assert result.text == "你好世界"
         assert result.language == "zh"
         assert result.confidence == 0.95
-        assert result.duration == 1.5
+        assert result.is_final is True
 
-    def test_result_without_optional_fields(self):
-        """测试不带可选字段的结果"""
+    def test_result_defaults(self):
+        """测试默认值"""
         result = ASRResult(text="hello")
         assert result.text == "hello"
-        assert result.language is None
-        assert result.confidence is None
-        assert result.duration is None
-
-    def test_result_to_dict(self):
-        """测试结果转字典"""
-        result = ASRResult(
-            text="测试文本",
-            language="zh",
-            confidence=0.99,
-        )
-        data = result.model_dump()
-        assert data["text"] == "测试文本"
-        assert data["language"] == "zh"
-        assert data["confidence"] == 0.99
+        assert result.confidence == 1.0
+        assert result.is_final is True
 
 
-class ConcreteASREngine(ASREngine):
-    """用于测试的具体 ASR 引擎实现"""
+class TestAudioChunk:
+    """AudioChunk 测试"""
 
-    def __init__(self):
-        self._initialized = False
+    def test_to_numpy(self):
+        """测试转换为 numpy 数组"""
+        chunk = AudioChunk(data=b"\x00\x01\x02\x03", sample_rate=16000)
+        array = chunk.to_numpy()
+        assert array.shape[0] == 2
 
-    async def initialize(self) -> None:
-        self._initialized = True
-
-    async def transcribe(
-        self,
-        audio_data: bytes,
-        sample_rate: int = 16000,
-        language: str | None = None,
-    ) -> ASRResult:
-        return ASRResult(
-            text="测试转录结果",
-            language=language or "zh",
-            confidence=0.95,
-        )
-
-    async def transcribe_stream(self, audio_stream, sample_rate: int = 16000):
-        yield ASRResult(text="流式结果1", language="zh")
-        yield ASRResult(text="流式结果2", language="zh")
-
-    async def cleanup(self) -> None:
-        self._initialized = False
-
-    def is_initialized(self) -> bool:
-        return self._initialized
+    def test_to_float32(self):
+        """测试转换为 float32 数组"""
+        chunk = AudioChunk(data=b"\x00\x00\x00\x00", sample_rate=16000)
+        array = chunk.to_float32()
+        assert array.shape[0] == 2
 
 
 class TestASREngine:
     """ASR 引擎抽象类测试"""
 
     @pytest.fixture
-    def engine(self) -> ConcreteASREngine:
-        """创建测试引擎"""
-        return ConcreteASREngine()
+    def engine(self) -> DummyASREngine:
+        return DummyASREngine(language=ASRLanguage.CHINESE)
 
     @pytest.mark.asyncio
-    async def test_initialize(self, engine: ConcreteASREngine):
-        """测试初始化"""
-        assert not engine.is_initialized()
-        await engine.initialize()
-        assert engine.is_initialized()
+    async def test_load_unload(self, engine: DummyASREngine):
+        assert not engine.is_loaded
+        await engine.load()
+        assert engine.is_loaded
+        await engine.unload()
+        assert not engine.is_loaded
 
     @pytest.mark.asyncio
-    async def test_transcribe(self, engine: ConcreteASREngine):
-        """测试转录"""
-        await engine.initialize()
+    async def test_transcribe(self, engine: DummyASREngine):
+        await engine.load()
         result = await engine.transcribe(b"audio_data")
         assert result.text == "测试转录结果"
         assert result.language == "zh"
-        assert result.confidence == 0.95
 
     @pytest.mark.asyncio
-    async def test_transcribe_with_language(self, engine: ConcreteASREngine):
-        """测试带语言参数的转录"""
-        await engine.initialize()
-        result = await engine.transcribe(b"audio_data", language="en")
-        assert result.language == "en"
-
-    @pytest.mark.asyncio
-    async def test_transcribe_stream(self, engine: ConcreteASREngine):
-        """测试流式转录"""
-        await engine.initialize()
+    async def test_transcribe_stream(self, engine: DummyASREngine):
+        await engine.load()
         results = []
         async for result in engine.transcribe_stream(iter([b"chunk1", b"chunk2"])):
             results.append(result)
-
         assert len(results) == 2
-        assert results[0].text == "流式结果1"
-        assert results[1].text == "流式结果2"
+        assert results[0].is_final is False
+        assert results[1].is_final is True
 
     @pytest.mark.asyncio
-    async def test_cleanup(self, engine: ConcreteASREngine):
-        """测试清理"""
-        await engine.initialize()
-        assert engine.is_initialized()
-        await engine.cleanup()
-        assert not engine.is_initialized()
-
-    @pytest.mark.asyncio
-    async def test_context_manager(self, engine: ConcreteASREngine):
-        """测试上下文管理器"""
+    async def test_context_manager(self, engine: DummyASREngine):
         async with engine:
-            assert engine.is_initialized()
-        assert not engine.is_initialized()
+            assert engine.is_loaded
+        assert not engine.is_loaded

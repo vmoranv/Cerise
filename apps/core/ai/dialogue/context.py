@@ -38,7 +38,7 @@ async def build_context_messages(
                 limit=None,
                 session_id=session.id,
             )
-            memory_context = memory_service.format_context(results)
+            memory_context = await memory_service.format_context(results, session_id=session.id)
         except Exception:  # pragma: no cover - recall is optional
             logger.exception("Memory recall failed")
 

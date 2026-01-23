@@ -1,0 +1,42 @@
+"""
+工作流模块
+
+提供任务定义、动作序列、条件触发等自动化工作流能力。
+"""
+
+from operation.workflow.actions import (
+    Action,
+    ClickAction,
+    ConditionalAction,
+    KeyPressAction,
+    LoopAction,
+    TypeTextAction,
+    WaitAction,
+)
+from operation.workflow.manager import ActionSequence, Task, Workflow
+from operation.workflow.types import (
+    ActionResult,
+    ActionStatus,
+    TriggerConfig,
+    TriggerType,
+)
+
+__all__ = [
+    # Types
+    "ActionResult",
+    "ActionStatus",
+    "TriggerConfig",
+    "TriggerType",
+    # Actions
+    "Action",
+    "ClickAction",
+    "ConditionalAction",
+    "KeyPressAction",
+    "LoopAction",
+    "TypeTextAction",
+    "WaitAction",
+    # Manager
+    "ActionSequence",
+    "Task",
+    "Workflow",
+]

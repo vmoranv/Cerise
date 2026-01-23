@@ -4,12 +4,13 @@ Local adapters for service ports.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from ..abilities import AbilityResult
 from ..ai import EmotionAnalyzer
 from ..ai.emotion.types import EmotionResult
 from ..ai.memory import MemoryEngine, MemoryRecord, MemoryResult
+from ..ai.memory.context_builder import MemoryContextBuilder
 from ..ai.memory.layer_store import (
     CoreProfileStateStore,
     CoreProfileStore,
@@ -48,8 +49,9 @@ class LocalEmotionService(EmotionService):
 class LocalMemoryService(MemoryService):
     """In-process memory service adapter."""
 
-    def __init__(self, engine: MemoryEngine):
+    def __init__(self, engine: MemoryEngine, *, context_builder: MemoryContextBuilder | None = None):
         self._engine = engine
+        self._context_builder = context_builder
 
     def default_recall_limit(self) -> int:
         if not self._engine.config:
@@ -81,7 +83,9 @@ class LocalMemoryService(MemoryService):
         recall_limit = limit if limit is not None else self.default_recall_limit()
         return await self._engine.recall(query, limit=recall_limit, session_id=session_id)
 
-    def format_context(self, results: list[MemoryResult]) -> str:
+    async def format_context(self, results: list[MemoryResult], *, session_id: str | None = None) -> str:
+        if self._context_builder:
+            return await self._context_builder.build(results, session_id)
         return self._engine.format_context(results)
 
 
@@ -106,7 +110,7 @@ class LocalCoreProfileService(CoreProfileService):
                 profile_id=profile_id,
                 summary=summary,
                 session_id=session_id,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         return await self._store.upsert_profile(
             profile_id=profile_id,
@@ -150,7 +154,7 @@ class LocalSemanticFactsService(SemanticFactsService):
                 subject=subject,
                 predicate=predicate,
                 object=object,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         return await self._store.upsert_fact(
             fact_id=fact_id,
@@ -194,7 +198,7 @@ class LocalProceduralHabitsService(ProceduralHabitsService):
                 session_id=session_id,
                 task_type=task_type,
                 instruction=instruction,
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         return await self._store.record_habit(
             habit_id=habit_id,

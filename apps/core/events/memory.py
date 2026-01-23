@@ -14,6 +14,7 @@ from ..contracts.events import (
 from ..infrastructure import Event, EventBus
 from ..services.ports import (
     CoreProfileService,
+    EmotionService,
     MemoryService,
     ProceduralHabitsService,
     SemanticFactsService,
@@ -23,14 +24,39 @@ from ..services.ports import (
 class MemoryEventHandler:
     """Attach dialogue events to memory ingestion."""
 
-    def __init__(self, bus: EventBus, memory: MemoryService):
+    def __init__(
+        self,
+        bus: EventBus,
+        memory: MemoryService,
+        emotion: EmotionService | None = None,
+        *,
+        enable_emotion_snapshot: bool = True,
+    ):
         self._bus = bus
         self._memory = memory
+        self._emotion = emotion
+        self._emotion_enabled = enable_emotion_snapshot
 
     def attach(self) -> None:
         """Subscribe to dialogue events."""
         self._bus.subscribe(DIALOGUE_USER_MESSAGE, self._handle_user_message)
         self._bus.subscribe(DIALOGUE_ASSISTANT_RESPONSE, self._handle_assistant_message)
+
+    def _build_metadata(self, content: str, *, model: str | None = None) -> dict:
+        metadata: dict = {}
+        if model:
+            metadata["model"] = model
+        if self._emotion_enabled and self._emotion:
+            result = self._emotion.analyze(content)
+            metadata["emotion_primary"] = result.primary_emotion.value
+            metadata["emotion"] = {
+                "valence": result.valence,
+                "arousal": result.arousal,
+                "dominance": result.dominance,
+                "intensity": result.confidence,
+                "confidence": result.confidence,
+            }
+        return metadata
 
     async def _handle_user_message(self, event: Event) -> None:
         data = event.data or {}
@@ -38,7 +64,13 @@ class MemoryEventHandler:
         content = data.get("content", "")
         if not session_id or not content:
             return
-        await self._memory.ingest_message(session_id=session_id, role="user", content=content)
+        metadata = self._build_metadata(content)
+        await self._memory.ingest_message(
+            session_id=session_id,
+            role="user",
+            content=content,
+            metadata=metadata or None,
+        )
 
     async def _handle_assistant_message(self, event: Event) -> None:
         data = event.data or {}
@@ -46,11 +78,12 @@ class MemoryEventHandler:
         content = data.get("content", "")
         if not session_id or not content:
             return
+        metadata = self._build_metadata(content, model=data.get("model", ""))
         await self._memory.ingest_message(
             session_id=session_id,
             role="assistant",
             content=content,
-            metadata={"model": data.get("model", "")},
+            metadata=metadata or None,
         )
 
 

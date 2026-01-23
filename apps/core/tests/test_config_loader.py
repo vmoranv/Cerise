@@ -170,3 +170,43 @@ class TestConfigLoader:
             assert config.providers[0].config["api_key"] == "secret-key-123"
 
             del os.environ["TEST_API_KEY"]
+
+    def test_load_app_config_from_toml(self):
+        """Test loading app config from toml file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = _prepare_data_dir(tmpdir)
+
+            config_file = data_dir / "config.toml"
+            config_file.write_text(
+                'server = { host = "localhost", port = 4321 }\n',
+                encoding="utf-8",
+            )
+
+            loader = ConfigLoader(data_dir)
+            config = loader.load_app_config()
+            assert config.server.host == "localhost"
+            assert config.server.port == 4321
+
+    def test_load_providers_config_from_toml(self):
+        """Test loading providers config from toml file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = _prepare_data_dir(tmpdir)
+
+            providers_file = data_dir / "providers.toml"
+            providers_file.write_text(
+                'default = "openai-1"\n'
+                "\n"
+                "[[providers]]\n"
+                'id = "openai-1"\n'
+                'type = "openai"\n'
+                'name = "OpenAI"\n'
+                "enabled = true\n"
+                "[providers.config]\n"
+                'api_key = "sk-test"\n',
+                encoding="utf-8",
+            )
+
+            loader = ConfigLoader(data_dir)
+            config = loader.load_providers_config()
+            assert len(config.providers) == 1
+            assert config.providers[0].id == "openai-1"

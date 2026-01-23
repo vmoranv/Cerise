@@ -1,3 +1,7 @@
+time:
+  timezone: "UTC"        # IANA timezone, e.g. Asia/Shanghai
+  timestamp_format: "%Y-%m-%d %H:%M"
+
 store:
   backend: sqlite         # sqlite | state | memory
   sqlite_path: ""         # empty = ~/.cerise/memory/memory.db
@@ -50,12 +54,61 @@ compression:
   threshold: 80
   window: 40
   max_chars: 1000
+  summary_provider_id: ""  # optional provider id for LLM summaries
+  summary_model: ""
+  summary_temperature: 0.2
+  summary_max_tokens: 400
+
+context:
+  enabled: true
+  max_items: 12
+  layer_weights:
+    core: 1.0
+    semantic: 1.0
+    procedural: 1.0
+    episodic: 2.0
+  max_per_layer: {}
+  include_tags: true
+  include_category: true
+  include_emotion: true
+  include_scores: false
+
+scoring:
+  recency_half_life_seconds: 1800
+  recency_weight: 1.0
+  importance_weight: 0.15
+  emotional_weight: 0.1
+  reinforcement_weight: 0.05
+  max_access_count: 20
+  emotion_filter_enabled: false
+  emotion_min_intensity: 0.2
+
+pipeline:
+  extractor: rule          # rule | llm | composite
+  llm_provider_id: ""      # provider id for extraction
+  llm_model: ""
+  llm_temperature: 0.2
+  llm_max_tokens: 800
+  emotion_on_ingest: true
+  task_type_mapping: {}
+
+dreaming:
+  enabled: false
+  max_records: 200
+  decay_half_life_seconds: 86400
+  min_importance: 0.1
+  prune_score_threshold: 0.05
 
 recall:
   enabled: true
   top_k: 8
   min_score: 0.05
   rrf_k: 60
+  touch_on_recall: true
+  random_enabled: false
+  random_k: 1
+  random_probability: 0.1
+  trigger_keywords: ["random", "surprise"]
 
 rerank:
   enabled: true

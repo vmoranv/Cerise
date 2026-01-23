@@ -4,7 +4,7 @@ Event contracts for the in-process message bus.
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 DIALOGUE_USER_MESSAGE = "dialogue.user_message"
 DIALOGUE_ASSISTANT_RESPONSE = "dialogue.assistant_response"
@@ -20,6 +20,12 @@ MEMORY_CORE_UPDATED = "memory.core.updated"
 MEMORY_FACT_UPSERTED = "memory.fact.upserted"
 MEMORY_HABIT_RECORDED = "memory.habit.recorded"
 MEMORY_EMOTIONAL_SNAPSHOT_ATTACHED = "memory.emotional_snapshot.attached"
+
+OPERATION_WINDOW_CONNECTED = "operation.window.connected"
+OPERATION_WINDOW_DISCONNECTED = "operation.window.disconnected"
+OPERATION_INPUT_PERFORMED = "operation.input.performed"
+OPERATION_TEMPLATE_MATCHED = "operation.template.matched"
+OPERATION_ACTION_COMPLETED = "operation.action.completed"
 
 
 class DialogueUserMessagePayload(TypedDict):
@@ -187,6 +193,83 @@ def build_memory_emotional_snapshot_attached(
     return {"record_id": record_id, "session_id": session_id, "emotion": emotion}
 
 
+class OperationWindowConnectedPayload(TypedDict):
+    hwnd: int
+    width: int
+    height: int
+
+
+def build_operation_window_connected(
+    hwnd: int,
+    width: int,
+    height: int,
+) -> OperationWindowConnectedPayload:
+    return {"hwnd": hwnd, "width": width, "height": height}
+
+
+class OperationWindowDisconnectedPayload(TypedDict):
+    hwnd: int
+
+
+def build_operation_window_disconnected(hwnd: int) -> OperationWindowDisconnectedPayload:
+    return {"hwnd": hwnd}
+
+
+class OperationInputPerformedPayload(TypedDict):
+    action: str
+    hwnd: int
+    params: dict[str, Any]
+
+
+def build_operation_input_performed(
+    action: str,
+    hwnd: int,
+    params: dict[str, Any],
+) -> OperationInputPerformedPayload:
+    return {"action": action, "hwnd": hwnd, "params": params}
+
+
+class OperationTemplateMatchedPayload(TypedDict):
+    template: str
+    threshold: float
+    box: dict[str, Any]
+
+
+def build_operation_template_matched(
+    template: str,
+    threshold: float,
+    box: dict[str, Any],
+) -> OperationTemplateMatchedPayload:
+    return {"template": template, "threshold": threshold, "box": box}
+
+
+class OperationActionCompletedPayload(TypedDict):
+    action: str
+    action_type: str
+    status: str
+    message: str
+    duration: float
+    data: dict[str, Any] | None
+
+
+def build_operation_action_completed(
+    action: str,
+    action_type: str,
+    status: str,
+    message: str,
+    duration: float,
+    data: dict[str, Any] | None = None,
+) -> OperationActionCompletedPayload:
+    return {
+        "action": action,
+        "action_type": action_type,
+        "status": status,
+        "message": message,
+        "duration": duration,
+        "data": data,
+    }
+
+
 EVENT_NAMES = (
     DIALOGUE_USER_MESSAGE,
     DIALOGUE_ASSISTANT_RESPONSE,
@@ -199,6 +282,11 @@ EVENT_NAMES = (
     MEMORY_FACT_UPSERTED,
     MEMORY_HABIT_RECORDED,
     MEMORY_EMOTIONAL_SNAPSHOT_ATTACHED,
+    OPERATION_WINDOW_CONNECTED,
+    OPERATION_WINDOW_DISCONNECTED,
+    OPERATION_INPUT_PERFORMED,
+    OPERATION_TEMPLATE_MATCHED,
+    OPERATION_ACTION_COMPLETED,
 )
 
 __all__ = [
@@ -213,6 +301,11 @@ __all__ = [
     "MEMORY_FACT_UPSERTED",
     "MEMORY_HABIT_RECORDED",
     "MEMORY_EMOTIONAL_SNAPSHOT_ATTACHED",
+    "OPERATION_WINDOW_CONNECTED",
+    "OPERATION_WINDOW_DISCONNECTED",
+    "OPERATION_INPUT_PERFORMED",
+    "OPERATION_TEMPLATE_MATCHED",
+    "OPERATION_ACTION_COMPLETED",
     "DialogueUserMessagePayload",
     "DialogueAssistantResponsePayload",
     "EmotionAnalysisStartedPayload",
@@ -224,6 +317,11 @@ __all__ = [
     "MemoryFactUpsertedPayload",
     "MemoryHabitRecordedPayload",
     "MemoryEmotionalSnapshotAttachedPayload",
+    "OperationWindowConnectedPayload",
+    "OperationWindowDisconnectedPayload",
+    "OperationInputPerformedPayload",
+    "OperationTemplateMatchedPayload",
+    "OperationActionCompletedPayload",
     "build_dialogue_user_message",
     "build_dialogue_assistant_response",
     "build_emotion_analysis_started",
@@ -235,5 +333,10 @@ __all__ = [
     "build_memory_fact_upserted",
     "build_memory_habit_recorded",
     "build_memory_emotional_snapshot_attached",
+    "build_operation_window_connected",
+    "build_operation_window_disconnected",
+    "build_operation_input_performed",
+    "build_operation_template_matched",
+    "build_operation_action_completed",
     "EVENT_NAMES",
 ]
