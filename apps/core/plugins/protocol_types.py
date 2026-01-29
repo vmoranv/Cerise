@@ -21,6 +21,7 @@ class InitializeResult:
 
     success: bool
     abilities: list[dict] = field(default_factory=list)
+    skills: list[dict] = field(default_factory=list)
     error: str | None = None
 
 
@@ -29,6 +30,7 @@ class ExecuteParams:
     """Parameters for 'execute' method."""
 
     ability: str
+    skill: str | None = None
     params: dict = field(default_factory=dict)
     context: dict = field(default_factory=dict)
 

@@ -31,6 +31,7 @@ class ExecutionMixin:
             method=Methods.EXECUTE,
             params={
                 "ability": ability_name,
+                "skill": ability_name,
                 "params": params,
                 "context": context,
             },

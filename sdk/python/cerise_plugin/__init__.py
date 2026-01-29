@@ -141,13 +141,15 @@ class PluginRunner:
             config = params.get("config", {})
             self.plugin.permissions = params.get("permissions", [])
             success = await self.plugin.on_initialize(config)
+            abilities = self.plugin.get_abilities()
             return {
                 "success": success,
-                "abilities": self.plugin.get_abilities(),
+                "abilities": abilities,
+                "skills": abilities,
             }
 
         elif method == "execute":
-            ability = params.get("ability", "")
+            ability = params.get("ability") or params.get("skill") or ""
             exec_params = params.get("params", {})
             context_data = params.get("context", {})
 

@@ -58,12 +58,18 @@ class LifecycleMixin:
             await transport.disconnect()
             return False
 
+        abilities = response.result.get("abilities")
+        if not abilities:
+            abilities = response.result.get("skills")
+        if not abilities:
+            abilities = manifest.abilities
+
         plugin = LoadedPlugin(
             manifest=manifest,
             transport=transport,
             plugin_dir=plugin_dir,
             config=config or {},
-            abilities=response.result.get("abilities", manifest.abilities),
+            abilities=abilities,
         )
 
         self._plugins[plugin_name] = plugin

@@ -32,6 +32,10 @@ class PluginManifest:
     @classmethod
     def from_dict(cls, data: dict) -> "PluginManifest":
         runtime = data.get("runtime", {})
+        abilities = data.get("abilities")
+        skills = data.get("skills")
+        if not abilities and skills:
+            abilities = skills
         return cls(
             name=data.get("name", ""),
             version=data.get("version", "0.0.0"),
@@ -43,7 +47,7 @@ class PluginManifest:
             command=runtime.get("command", ""),
             transport=runtime.get("transport", "stdio"),
             http_url=runtime.get("http_url", ""),
-            abilities=data.get("abilities", []),
+            abilities=abilities or [],
             permissions=data.get("permissions", []),
             config_schema=data.get("config_schema", {}),
         )

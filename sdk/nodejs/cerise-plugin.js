@@ -169,14 +169,16 @@ class PluginRunner {
         const config = params.config || {};
         this.plugin.permissions = params.permissions || [];
         const success = await this.plugin.onInitialize(config);
+        const abilities = this.plugin.getAbilities();
         return {
           success,
-          abilities: this.plugin.getAbilities(),
+          abilities,
+          skills: abilities,
         };
       }
 
       case 'execute': {
-        const ability = params.ability || '';
+        const ability = params.ability || params.skill || '';
         const execParams = params.params || {};
         const contextData = params.context || {};
 
