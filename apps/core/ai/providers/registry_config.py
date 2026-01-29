@@ -87,6 +87,7 @@ class ProviderRegistryConfigMixin:
         from .openai_provider import OpenAIProvider
         from .rerank_http_provider import RerankHttpProvider
         from .rerank_providers import BailianRerankProvider, VllmRerankProvider, XinferenceRerankProvider
+        from .zerolan_provider import ZerolanProvider
 
         cls._provider_types["openai"] = OpenAIProvider
         cls._provider_types["rerank_http"] = RerankHttpProvider
@@ -107,6 +108,7 @@ class ProviderRegistryConfigMixin:
         cls._provider_types["openrouter"] = OpenRouterProvider
         cls._provider_types["ollama"] = OllamaProvider
         cls._provider_types["lmstudio"] = LMStudioProvider
+        cls._provider_types["zerolan"] = ZerolanProvider
 
         with contextlib.suppress(ImportError):
             from .claude_provider import ClaudeProvider

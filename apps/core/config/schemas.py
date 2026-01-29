@@ -58,6 +58,53 @@ class BusConfig(BaseModel):
     start_broker: bool = True
 
 
+class CapabilityToggle(BaseModel):
+    """Per-ability capability toggle."""
+
+    enabled: bool = True
+    allow_tools: bool = True
+    priority: int = 0
+
+
+class CapabilitiesConfig(BaseModel):
+    """Capability scheduling configuration."""
+
+    default_enabled: bool = True
+    allow_tools_by_default: bool = True
+    capabilities: dict[str, CapabilityToggle] = Field(default_factory=dict)
+
+
+class StarAbilityToggle(BaseModel):
+    """Star ability toggle."""
+
+    enabled: bool = True
+    allow_tools: bool = True
+
+
+class StarEntry(BaseModel):
+    """Star registry entry."""
+
+    name: str
+    enabled: bool = True
+    allow_tools: bool = True
+    abilities: dict[str, StarAbilityToggle] = Field(default_factory=dict)
+
+    def get_ability(self, ability_name: str) -> StarAbilityToggle | None:
+        return self.abilities.get(ability_name)
+
+
+class StarRegistry(BaseModel):
+    """Registry of star configs."""
+
+    stars: list[StarEntry] = Field(default_factory=list)
+
+    def get_star(self, name: str) -> StarEntry | None:
+        for star in self.stars:
+            if star.name == name:
+                return star
+        return None
+
+
 class AppConfig(BaseModel):
     """Main application configuration"""
 
@@ -65,6 +112,7 @@ class AppConfig(BaseModel):
     ai: AIConfig = Field(default_factory=AIConfig)
     plugins: PluginsConfig = Field(default_factory=PluginsConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
+    capabilities: CapabilitiesConfig = Field(default_factory=CapabilitiesConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     bus: BusConfig = Field(default_factory=BusConfig)
 

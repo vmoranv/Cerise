@@ -7,7 +7,8 @@ from datetime import datetime
 
 import pytest
 from apps.core.ai.dialogue.proactive_config import ProactiveChatConfig, ProactiveScheduleConfig
-from apps.core.ai.dialogue.proactive_service import ProactiveChatService, ProactiveSessionState
+from apps.core.ai.dialogue.proactive_service import ProactiveChatService
+from apps.core.ai.dialogue.proactive_state import ProactiveSessionState
 from apps.core.contracts.events import DIALOGUE_USER_MESSAGE
 from apps.core.infrastructure import Event, MessageBus, StateStore
 

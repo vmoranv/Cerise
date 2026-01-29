@@ -29,3 +29,21 @@ class MemoryConfigUpdateRequest(BaseModel):
 class PluginConfigUpdate(BaseModel):
     enabled: bool | None = None
     config: dict | None = None
+
+
+class StarEntryUpdate(BaseModel):
+    enabled: bool | None = None
+    allow_tools: bool | None = None
+
+
+class StarAbilityUpdate(BaseModel):
+    enabled: bool | None = None
+    allow_tools: bool | None = None
+
+
+class StarConfigUpdate(BaseModel):
+    config: dict
+
+
+class StarConfigValidate(BaseModel):
+    config: dict | None = None

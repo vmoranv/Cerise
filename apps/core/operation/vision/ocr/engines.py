@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from operation.vision.box import Box
-from operation.vision.ocr.base import BaseOCR
-from operation.vision.ocr.preprocessor import OCRPreprocessor
-from operation.vision.ocr.types import OCRResult
+from ..box import Box
+from .base import BaseOCR
+from .preprocessor import OCRPreprocessor
+from .types import OCRResult
 
 
 class PaddleOCREngine(BaseOCR):

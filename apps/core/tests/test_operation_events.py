@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -14,14 +12,9 @@ from apps.core.contracts.events import (
     OPERATION_WINDOW_CONNECTED,
 )
 from apps.core.infrastructure import Event, MessageBus
-
-CORE_ROOT = Path(__file__).resolve().parents[1]
-if str(CORE_ROOT) not in sys.path:
-    sys.path.insert(0, str(CORE_ROOT))
-
-from operation.service import OperationService  # noqa: E402
-from operation.workflow.actions import ClickAction  # noqa: E402
-from operation.workflow.manager import ActionSequence  # noqa: E402
+from apps.core.operation.service import OperationService
+from apps.core.operation.workflow.actions import ClickAction
+from apps.core.operation.workflow.manager import ActionSequence
 
 
 class DummyCapture:

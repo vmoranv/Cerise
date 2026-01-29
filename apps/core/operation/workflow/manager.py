@@ -12,11 +12,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from operation.workflow.actions import Action
-from operation.workflow.types import ActionResult, ActionStatus, TriggerConfig, TriggerType
+from .actions import Action
+from .types import ActionResult, ActionStatus, TriggerConfig, TriggerType
 
 if TYPE_CHECKING:
-    from operation.service import OperationService
+    from ..service import OperationService
 
 
 @dataclass

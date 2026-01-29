@@ -4,7 +4,7 @@
 提供键盘、鼠标输入模拟能力。
 """
 
-from operation.input.api import (
+from .api import (
     POINT,
     ClientToScreen,
     GetWindowRect,
@@ -17,8 +17,8 @@ from operation.input.api import (
     make_key_lparam,
     make_lparam,
 )
-from operation.input.base import Interaction
-from operation.input.constants import (
+from .base import Interaction
+from .constants import (
     MK_LBUTTON,
     MK_MBUTTON,
     MK_RBUTTON,
@@ -38,13 +38,13 @@ from operation.input.constants import (
     WM_RBUTTONDOWN,
     WM_RBUTTONUP,
 )
-from operation.input.keymap import (
+from .keymap import (
     KeyBinding,
     KeyMap,
     create_arrow_preset,
     create_wasd_preset,
 )
-from operation.input.win32 import Win32Interaction
+from .win32 import Win32Interaction
 
 __all__ = [
     # Protocol

@@ -11,10 +11,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from operation.workflow.types import ActionResult, ActionStatus
+from .types import ActionResult, ActionStatus
 
 if TYPE_CHECKING:
-    from operation.service import OperationService
+    from ..service import OperationService
 
 
 class Action(ABC):

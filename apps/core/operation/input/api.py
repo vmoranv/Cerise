@@ -9,7 +9,7 @@ from __future__ import annotations
 import ctypes
 from ctypes import wintypes
 
-from operation.input.constants import VK_CODES
+from .constants import VK_CODES
 
 # Win32 API 函数
 user32 = ctypes.windll.user32

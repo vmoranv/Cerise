@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
+
+from fastapi import WebSocket
 
 from ..asr.base import ASRLanguage
 
@@ -32,6 +36,35 @@ class MessageType(str, Enum):
     # 语音对话消息
     CONVERSATION_START = "conversation_start"
     CONVERSATION_END = "conversation_end"
+
+
+class ConnectionState(str, Enum):
+    """Connection state."""
+
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    STREAMING = "streaming"
+    DISCONNECTING = "disconnecting"
+    DISCONNECTED = "disconnected"
+
+
+@dataclass
+class ConnectionInfo:
+    """Connection metadata."""
+
+    id: str
+    websocket: WebSocket
+    state: ConnectionState = ConnectionState.CONNECTING
+    created_at: datetime = field(default_factory=datetime.now)
+    last_active: datetime = field(default_factory=datetime.now)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    is_streaming_asr: bool = False
+    is_streaming_tts: bool = False
+
+    sample_rate: int = 16000
+    channels: int = 1
+    encoding: str = "pcm"
 
 
 @dataclass

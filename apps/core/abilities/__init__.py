@@ -14,6 +14,7 @@ from .base import (
 from .decorators import ability, llm_tool, on_event
 from .loader import PluginLoader
 from .registry import AbilityRegistry
+from .scheduler import CapabilityScheduler
 
 __all__ = [
     "BaseAbility",
@@ -22,6 +23,7 @@ __all__ = [
     "AbilityResult",
     "AbilityContext",
     "AbilityRegistry",
+    "CapabilityScheduler",
     "PluginLoader",
     "ability",
     "llm_tool",

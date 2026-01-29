@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from operation.vision.box import Box
-from operation.vision.ocr.base import BaseOCR
-from operation.vision.ocr.engines import (
+from ..box import Box
+from .base import BaseOCR
+from .engines import (
     PaddleOCREngine,
     RapidOCREngine,
     TesseractOCREngine,
 )
-from operation.vision.ocr.types import OCRResult
+from .types import OCRResult
 
 
 class OCRService:

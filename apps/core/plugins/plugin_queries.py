@@ -52,3 +52,7 @@ class QueryMixin:
             if schema:
                 schemas.append(schema)
         return schemas
+
+    def get_ability_owner(self, ability_name: str) -> str | None:
+        """Return the plugin name that owns an ability."""
+        return self._ability_map.get(ability_name)

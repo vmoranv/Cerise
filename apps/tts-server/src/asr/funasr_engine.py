@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 import numpy as np
 
 from .base import ASREngine, ASRLanguage, ASRResult, AudioChunk
+from .funasr_stream import resample_audio, transcribe_stream_buffered
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class FunASREngine(ASREngine):
 
         # 如果采样率不是 16000，需要重采样
         if sample_rate != 16000:
-            audio_array = self._resample(audio_array, sample_rate, 16000)
+            audio_array = resample_audio(audio_array, sample_rate, 16000)
 
         # 在线程池中执行推理
         loop = asyncio.get_event_loop()
@@ -206,7 +207,7 @@ class FunASREngine(ASREngine):
 
         if self._online_model is None:
             # 回退到缓冲模式
-            async for result in self._transcribe_stream_buffered(audio_stream, language):
+            async for result in transcribe_stream_buffered(self, audio_stream, language):
                 yield result
             return
 
@@ -274,49 +275,3 @@ class FunASREngine(ASREngine):
             confidence=1.0,
             is_final=is_final,
         )
-
-    async def _transcribe_stream_buffered(
-        self,
-        audio_stream: AsyncIterator[AudioChunk],
-        language: ASRLanguage | None = None,
-    ) -> AsyncIterator[ASRResult]:
-        """缓冲模式的流式转录（当在线模型不可用时）"""
-        buffer = []
-        total_duration = 0.0
-        last_process_time = 0.0
-        process_interval = 2.0  # 每 2 秒处理一次
-
-        async for chunk in audio_stream:
-            if chunk.is_end:
-                # 处理剩余数据
-                if buffer:
-                    combined = b"".join(buffer)
-                    result = await self.transcribe(combined, chunk.sample_rate, language)
-                    result.is_final = True
-                    yield result
-                break
-
-            buffer.append(chunk.data)
-            chunk_duration = len(chunk.data) / (chunk.sample_rate * 2)  # 假设 16bit
-            total_duration += chunk_duration
-
-            # 定期处理
-            if total_duration - last_process_time >= process_interval:
-                combined = b"".join(buffer)
-                result = await self.transcribe(combined, chunk.sample_rate, language)
-                result.is_final = False
-                yield result
-                last_process_time = total_duration
-
-    def _resample(self, audio: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
-        """重采样音频"""
-        try:
-            import soxr
-
-            return soxr.resample(audio, orig_sr, target_sr)
-        except ImportError:
-            # 使用简单的线性插值
-            ratio = target_sr / orig_sr
-            new_length = int(len(audio) * ratio)
-            indices = np.linspace(0, len(audio) - 1, new_length)
-            return np.interp(indices, np.arange(len(audio)), audio)

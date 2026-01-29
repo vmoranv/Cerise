@@ -1,4 +1,4 @@
-"""Proactive chat service."""
+"""Proactive chat scheduling service."""
 
 from __future__ import annotations
 
@@ -6,42 +6,19 @@ import asyncio
 import logging
 import random
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ...contracts.events import DIALOGUE_USER_MESSAGE
 from ...infrastructure import Event, EventBus, StateStore
 from .proactive_config import ProactiveChatConfig, ProactiveSessionConfig
+from .proactive_state import ProactiveSessionState
+from .proactive_time import is_quiet_time, next_quiet_end, parse_quiet_hours
 
 logger = logging.getLogger(__name__)
 
 
 SleepFunc = Callable[[float], Awaitable[None]]
 NowFunc = Callable[[], datetime]
-
-
-@dataclass
-class ProactiveSessionState:
-    """State for proactive chat scheduling."""
-
-    last_user_at: float | None = None
-    unanswered_count: int = 0
-    next_trigger_at: float | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict) -> ProactiveSessionState:
-        return cls(
-            last_user_at=data.get("last_user_at"),
-            unanswered_count=int(data.get("unanswered_count", 0)),
-            next_trigger_at=data.get("next_trigger_at"),
-        )
-
-    def to_dict(self) -> dict:
-        return {
-            "last_user_at": self.last_user_at,
-            "unanswered_count": self.unanswered_count,
-            "next_trigger_at": self.next_trigger_at,
-        }
 
 
 class ProactiveChatService:
@@ -245,14 +222,14 @@ class ProactiveChatService:
 
     def _seconds_until_quiet_end(self, config: ProactiveSessionConfig) -> float:
         quiet_hours = config.schedule.quiet_hours
-        window = _parse_quiet_hours(quiet_hours)
+        window = parse_quiet_hours(quiet_hours)
         if not window:
             return 0.0
         start_hour, end_hour = window
         now = self._now_time()
-        if not _is_quiet_time(now, start_hour, end_hour):
+        if not is_quiet_time(now, start_hour, end_hour):
             return 0.0
-        end_time = _next_quiet_end(now, start_hour, end_hour)
+        end_time = next_quiet_end(now, start_hour, end_hour)
         return max((end_time - now).total_seconds(), 0.0)
 
     def _now_time(self) -> datetime:
@@ -273,43 +250,3 @@ class ProactiveChatService:
         data = await self._load_states()
         data[session_id] = state.to_dict()
         await self._state_store.set(self._state_key, data)
-
-
-def _parse_quiet_hours(value: str) -> tuple[int, int] | None:
-    if not value or not isinstance(value, str):
-        return None
-    parts = value.split("-")
-    if len(parts) != 2:
-        return None
-    try:
-        start = int(parts[0])
-        end = int(parts[1])
-    except ValueError:
-        return None
-    if not (0 <= start <= 23 and 0 <= end <= 23):
-        return None
-    return start, end
-
-
-def _is_quiet_time(now: datetime, start_hour: int, end_hour: int) -> bool:
-    if start_hour == end_hour:
-        return False
-    hour = now.hour
-    if start_hour < end_hour:
-        return start_hour <= hour < end_hour
-    return hour >= start_hour or hour < end_hour
-
-
-def _next_quiet_end(now: datetime, start_hour: int, end_hour: int) -> datetime:
-    if start_hour < end_hour:
-        end = now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
-        if end <= now:
-            end += timedelta(days=1)
-        return end
-    if now.hour >= start_hour:
-        end = now.replace(hour=end_hour, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        return end
-    end = now.replace(hour=end_hour, minute=0, second=0, microsecond=0)
-    if end <= now:
-        end += timedelta(days=1)
-    return end

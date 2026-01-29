@@ -4,7 +4,7 @@
 提供任务定义、动作序列、条件触发等自动化工作流能力。
 """
 
-from operation.workflow.actions import (
+from .actions import (
     Action,
     ClickAction,
     ConditionalAction,
@@ -13,8 +13,8 @@ from operation.workflow.actions import (
     TypeTextAction,
     WaitAction,
 )
-from operation.workflow.manager import ActionSequence, Task, Workflow
-from operation.workflow.types import (
+from .manager import ActionSequence, Task, Workflow
+from .types import (
     ActionResult,
     ActionStatus,
     TriggerConfig,

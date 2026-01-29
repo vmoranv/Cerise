@@ -12,10 +12,10 @@ Cerise 操作层 (Operation Layer)
 """
 
 # Capture
-from operation.capture import CaptureMethod, Win32BitBltCapture
+from .capture import CaptureMethod, Win32BitBltCapture
 
 # Input
-from operation.input import (
+from .input import (
     VK_CODES,
     Interaction,
     KeyBinding,
@@ -26,10 +26,10 @@ from operation.input import (
 )
 
 # Service
-from operation.service import OperationService
+from .service import OperationService
 
 # Vision
-from operation.vision import (
+from .vision import (
     BaseOCR,
     Box,
     OCREngine,
@@ -60,7 +60,7 @@ from operation.vision import (
 )
 
 # Window
-from operation.window import (
+from .window import (
     WindowInfo,
     bring_to_front,
     find_window_by_title,
@@ -69,7 +69,7 @@ from operation.window import (
 )
 
 # Workflow
-from operation.workflow import (
+from .workflow import (
     Action,
     ActionResult,
     ActionSequence,

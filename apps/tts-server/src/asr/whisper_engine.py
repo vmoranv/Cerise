@@ -13,6 +13,7 @@ from typing import Literal
 import numpy as np
 
 from .base import ASREngine, ASRLanguage, ASRResult, AudioChunk
+from .whisper_stream import resample_audio, stream_transcribe
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ class WhisperEngine(ASREngine):
 
         # 重采样到 16000 Hz（Whisper 要求）
         if sample_rate != 16000:
-            audio_array = self._resample(audio_array, sample_rate, 16000)
+            audio_array = resample_audio(audio_array, sample_rate, 16000)
 
         # 确定语言
         lang = language or self.language
@@ -271,91 +272,6 @@ class WhisperEngine(ASREngine):
         audio_stream: AsyncIterator[AudioChunk],
         language: ASRLanguage | None = None,
     ) -> AsyncIterator[ASRResult]:
-        """
-        流式转录
-
-        注意：Whisper 本身不支持真正的流式识别，
-        这里使用滑动窗口缓冲方案实现伪流式效果
-        """
-        if not self._is_loaded:
-            await self.load()
-
-        # 缓冲区
-        buffer = []
-        total_samples = 0
-        sample_rate = 16000
-
-        # 处理参数
-        chunk_duration = 5.0  # 每 5 秒处理一次
-        overlap_duration = 1.0  # 重叠 1 秒
-        chunk_samples = int(chunk_duration * sample_rate)
-        overlap_samples = int(overlap_duration * sample_rate)
-
-        last_text = ""
-
-        async for chunk in audio_stream:
-            if chunk.is_end:
-                # 处理剩余数据
-                if buffer:
-                    combined = np.concatenate(buffer)
-                    result = await self.transcribe(
-                        combined.astype(np.int16).tobytes(),
-                        sample_rate,
-                        language,
-                    )
-                    result.is_final = True
-                    yield result
-                break
-
-            # 转换并添加到缓冲区
-            audio_array = chunk.to_float32()
-
-            # 重采样
-            if chunk.sample_rate != sample_rate:
-                audio_array = self._resample(audio_array, chunk.sample_rate, sample_rate)
-
-            buffer.append(audio_array)
-            total_samples += len(audio_array)
-
-            # 当缓冲区足够大时处理
-            if total_samples >= chunk_samples:
-                combined = np.concatenate(buffer)
-
-                # 转录
-                result = await self.transcribe(
-                    (combined * 32768).astype(np.int16).tobytes(),
-                    sample_rate,
-                    language,
-                )
-
-                # 只输出新增部分
-                if result.text != last_text:
-                    result.is_final = False
-                    yield result
-                    last_text = result.text
-
-                # 保留重叠部分
-                if len(combined) > overlap_samples:
-                    buffer = [combined[-overlap_samples:]]
-                    total_samples = overlap_samples
-                else:
-                    buffer = [combined]
-                    total_samples = len(combined)
-
-    def _resample(
-        self,
-        audio: np.ndarray,
-        orig_sr: int,
-        target_sr: int,
-    ) -> np.ndarray:
-        """重采样音频"""
-        try:
-            import soxr
-
-            return soxr.resample(audio, orig_sr, target_sr)
-        except ImportError:
-            # 使用线性插值
-            ratio = target_sr / orig_sr
-            new_length = int(len(audio) * ratio)
-            indices = np.linspace(0, len(audio) - 1, new_length)
-            return np.interp(indices, np.arange(len(audio)), audio).astype(np.float32)
+        """Stream transcription using buffered windows."""
+        async for result in stream_transcribe(self, audio_stream, language):
+            yield result

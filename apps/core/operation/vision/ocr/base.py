@@ -8,9 +8,9 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from operation.vision.box import Box
-from operation.vision.ocr.preprocessor import OCRPreprocessor
-from operation.vision.ocr.types import OCRResult
+from ..box import Box
+from .preprocessor import OCRPreprocessor
+from .types import OCRResult
 
 
 class BaseOCR(ABC):

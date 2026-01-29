@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..abilities import AbilityRegistry
+from ..abilities import AbilityRegistry, CapabilityScheduler
 from ..ai import DialogueEngine, EmotionAnalyzer
 from ..ai.dialogue import ProactiveChatService, load_proactive_config
 from ..ai.emotion import EmotionConfigManager
@@ -134,14 +134,22 @@ async def build_services() -> AppServices:
     live2d_events = Live2DEmotionHandler(bus=message_bus, live2d=live2d)
     live2d_events.attach()
 
+    star_registry = loader.get_star_registry()
+    capability_scheduler = CapabilityScheduler(
+        registry=AbilityRegistry,
+        config=app_config.capabilities,
+        star_registry=star_registry,
+        owner_provider=plugin_manager,
+    )
+
     dialogue_engine = DialogueEngine(
-        default_provider="openai",
-        default_model="gpt-4o",
+        default_provider=app_config.ai.default_provider,
+        default_model=app_config.ai.default_model,
         system_prompt=personality.generate_system_prompt(),
         message_bus=message_bus,
         memory_service=memory_service,
         provider_registry=ProviderRegistry,
-        ability_registry=AbilityRegistry,
+        ability_registry=capability_scheduler,
     )
 
     proactive_config = load_proactive_config()
@@ -205,12 +213,23 @@ async def _load_plugins(plugin_manager: PluginManager) -> None:
         return
 
     registry = loader.get_plugins_registry()
+    star_registry = loader.get_star_registry()
     enabled = [plugin.name for plugin in registry.plugins if plugin.enabled]
+
     if enabled:
         for plugin_name in enabled:
-            await plugin_manager.load(plugin_name)
+            entry = star_registry.get_star(plugin_name) if star_registry else None
+            if entry and not entry.enabled:
+                continue
+            plugin_dir = plugin_manager.plugins_dir / plugin_name
+            schema = loader.load_star_schema(plugin_dir) if plugin_dir.exists() else None
+            config = loader.load_star_config(plugin_name, schema=schema)
+            await plugin_manager.load(plugin_name, config)
         return
 
     # Fallback for local development
-    if (plugin_manager.plugins_dir / "vts-driver").exists():
-        await plugin_manager.load("vts-driver")
+    fallback_dir = plugin_manager.plugins_dir / "vts-driver"
+    if fallback_dir.exists():
+        schema = loader.load_star_schema(fallback_dir)
+        config = loader.load_star_config("vts-driver", schema=schema)
+        await plugin_manager.load("vts-driver", config)

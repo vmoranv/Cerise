@@ -6,48 +6,18 @@ WebSocket 连接管理器
 import asyncio
 import logging
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .manager_health import ConnectionManagerHealthMixin
+from .types import ConnectionInfo, ConnectionState
+
 logger = logging.getLogger(__name__)
 
 
-class ConnectionState(str, Enum):
-    """连接状态"""
-
-    CONNECTING = "connecting"
-    CONNECTED = "connected"
-    STREAMING = "streaming"
-    DISCONNECTING = "disconnecting"
-    DISCONNECTED = "disconnected"
-
-
-@dataclass
-class ConnectionInfo:
-    """连接信息"""
-
-    id: str
-    websocket: WebSocket
-    state: ConnectionState = ConnectionState.CONNECTING
-    created_at: datetime = field(default_factory=datetime.now)
-    last_active: datetime = field(default_factory=datetime.now)
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    # 流式识别状态
-    is_streaming_asr: bool = False
-    is_streaming_tts: bool = False
-
-    # 音频配置
-    sample_rate: int = 16000
-    channels: int = 1
-    encoding: str = "pcm"  # pcm, opus, mp3
-
-
-class ConnectionManager:
+class ConnectionManager(ConnectionManagerHealthMixin):
     """
     WebSocket 连接管理器
 
@@ -294,45 +264,3 @@ class ConnectionManager:
     def get_group_members(self, group: str) -> set[str]:
         """获取分组成员"""
         return self._groups.get(group, set()).copy()
-
-    # 健康检查
-    async def ping_all(self) -> dict[str, bool]:
-        """
-        Ping 所有连接检查活性
-
-        Returns:
-            连接ID -> 是否活跃
-        """
-        results = {}
-
-        for conn_id, conn_info in list(self._connections.items()):
-            try:
-                await conn_info.websocket.send_json({"type": "ping"})
-                results[conn_id] = True
-            except Exception:
-                results[conn_id] = False
-
-        return results
-
-    async def cleanup_stale_connections(self, max_idle_seconds: int = 300) -> int:
-        """
-        清理空闲连接
-
-        Args:
-            max_idle_seconds: 最大空闲时间（秒）
-
-        Returns:
-            清理的连接数
-        """
-        now = datetime.now()
-        stale_connections = []
-
-        for conn_id, conn_info in self._connections.items():
-            idle_time = (now - conn_info.last_active).total_seconds()
-            if idle_time > max_idle_seconds:
-                stale_connections.append(conn_id)
-
-        for conn_id in stale_connections:
-            await self.disconnect(conn_id, code=1000, reason="Idle timeout")
-
-        return len(stale_connections)

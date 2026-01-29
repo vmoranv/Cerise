@@ -7,15 +7,15 @@ OCR 文字识别模块
 - Tesseract (开源经典)
 """
 
-from operation.vision.ocr.base import BaseOCR
-from operation.vision.ocr.engines import (
+from .base import BaseOCR
+from .engines import (
     PaddleOCREngine,
     RapidOCREngine,
     TesseractOCREngine,
 )
-from operation.vision.ocr.preprocessor import OCRPreprocessor
-from operation.vision.ocr.service import OCRService
-from operation.vision.ocr.types import OCREngine, OCRResult
+from .preprocessor import OCRPreprocessor
+from .service import OCRService
+from .types import OCREngine, OCRResult
 
 __all__ = [
     # Types

@@ -12,7 +12,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from operation.service import OperationService
+    from ..service import OperationService
 
 
 class ActionStatus(Enum):

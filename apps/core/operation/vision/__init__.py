@@ -4,8 +4,8 @@
 提供图像处理、模板匹配、OCR等视觉分析能力。
 """
 
-from operation.vision.box import (
-    Box,
+from .box import Box
+from .box_utils import (
     find_box_by_name,
     find_boxes_by_name,
     find_boxes_within_boundary,
@@ -13,7 +13,7 @@ from operation.vision.box import (
     get_bounding_box,
     sort_boxes,
 )
-from operation.vision.matching import (
+from .matching import (
     compare_histograms,
     detect_text_regions,
     find_shapes,
@@ -21,7 +21,7 @@ from operation.vision.matching import (
     match_edge,
     match_grayscale,
 )
-from operation.vision.ocr import (
+from .ocr import (
     BaseOCR,
     OCREngine,
     OCRPreprocessor,
@@ -31,7 +31,7 @@ from operation.vision.ocr import (
     RapidOCREngine,
     TesseractOCREngine,
 )
-from operation.vision.preprocessing import (
+from .preprocessing import (
     adaptive_threshold,
     blur,
     denoise,
@@ -42,7 +42,7 @@ from operation.vision.preprocessing import (
     to_binary,
     to_grayscale,
 )
-from operation.vision.template import (
+from .template import (
     find_color,
     load_template,
     load_template_with_mask,

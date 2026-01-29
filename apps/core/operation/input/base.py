@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from operation.vision.box import Box
+from ..vision.box import Box
 
 
 @runtime_checkable

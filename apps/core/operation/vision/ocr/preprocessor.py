@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from operation.vision.preprocessing import (
+from ..preprocessing import (
     adaptive_threshold,
     denoise,
     resize,

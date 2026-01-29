@@ -9,8 +9,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from operation.vision.box import Box
-from operation.vision.preprocessing import (
+from .box import Box
+from .preprocessing import (
     denoise,
     edge_detection,
     otsu_threshold,

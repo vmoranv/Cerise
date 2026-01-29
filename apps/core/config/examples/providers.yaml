@@ -35,3 +35,12 @@ providers:
     config:
       api_key: ""
       base_url: http://localhost:11434/v1
+
+  - id: zerolan-llm
+    type: zerolan
+    name: ZerolanCore LLM
+    enabled: false
+    config:
+      base_url: http://localhost:11002
+      model: default
+      timeout: 30

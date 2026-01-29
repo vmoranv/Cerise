@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from operation.input.api import (
+from .api import (
     IsWindow,
     PostMessageW,
     SendMessageW,
@@ -19,7 +19,7 @@ from operation.input.api import (
     make_key_lparam,
     make_lparam,
 )
-from operation.input.constants import (
+from .constants import (
     MK_LBUTTON,
     MK_MBUTTON,
     MK_RBUTTON,
@@ -40,7 +40,7 @@ from operation.input.constants import (
 )
 
 if TYPE_CHECKING:
-    from operation.vision.box import Box
+    from ..vision.box import Box
 
 
 class Win32Interaction:
