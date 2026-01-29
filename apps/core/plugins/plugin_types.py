@@ -8,6 +8,24 @@ from pathlib import Path
 from .transport import BaseTransport
 
 
+def normalize_abilities(abilities: list[dict] | None) -> list[dict]:
+    """Normalize ability/tool definitions for downstream tool schemas."""
+    if not abilities:
+        return []
+
+    normalized: list[dict] = []
+    for entry in abilities:
+        if not isinstance(entry, dict):
+            continue
+        ability = dict(entry)
+        if "parameters" not in ability:
+            input_schema = ability.get("inputSchema") or ability.get("input_schema")
+            if input_schema is not None:
+                ability["parameters"] = input_schema
+        normalized.append(ability)
+    return normalized
+
+
 @dataclass
 class PluginManifest:
     """Plugin manifest data."""
@@ -34,8 +52,13 @@ class PluginManifest:
         runtime = data.get("runtime", {})
         abilities = data.get("abilities")
         skills = data.get("skills")
-        if not abilities and skills:
-            abilities = skills
+        tools = data.get("tools")
+        mcp_block = data.get("mcp")
+        if not tools and isinstance(mcp_block, dict):
+            tools = mcp_block.get("tools")
+        if not abilities:
+            abilities = skills or tools
+        abilities = normalize_abilities(abilities)
         return cls(
             name=data.get("name", ""),
             version=data.get("version", "0.0.0"),
@@ -47,7 +70,7 @@ class PluginManifest:
             command=runtime.get("command", ""),
             transport=runtime.get("transport", "stdio"),
             http_url=runtime.get("http_url", ""),
-            abilities=abilities or [],
+            abilities=abilities,
             permissions=data.get("permissions", []),
             config_schema=data.get("config_schema", {}),
         )

@@ -32,7 +32,10 @@ class ExecutionMixin:
             params={
                 "ability": ability_name,
                 "skill": ability_name,
+                "tool": ability_name,
+                "name": ability_name,
                 "params": params,
+                "arguments": params,
                 "context": context,
             },
         )

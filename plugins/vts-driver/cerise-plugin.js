@@ -174,12 +174,13 @@ class PluginRunner {
           success,
           abilities,
           skills: abilities,
+          tools: abilities,
         };
       }
 
       case 'execute': {
-        const ability = params.ability || params.skill || '';
-        const execParams = params.params || {};
+        const ability = params.ability || params.skill || params.tool || params.name || '';
+        const execParams = params.params ?? params.arguments ?? {};
         const contextData = params.context || {};
 
         const context = {

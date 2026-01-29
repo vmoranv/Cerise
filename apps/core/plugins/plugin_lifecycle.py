@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 
-from .plugin_types import LoadedPlugin, PluginManifest
+from .plugin_types import LoadedPlugin, PluginManifest, normalize_abilities
 from .protocol import JsonRpcRequest, Methods
 from .transport import BaseTransport, HttpTransport, StdioTransport
 
@@ -62,7 +62,14 @@ class LifecycleMixin:
         if not abilities:
             abilities = response.result.get("skills")
         if not abilities:
+            abilities = response.result.get("tools")
+        if not abilities:
+            mcp_block = response.result.get("mcp")
+            if isinstance(mcp_block, dict):
+                abilities = mcp_block.get("tools")
+        if not abilities:
             abilities = manifest.abilities
+        abilities = normalize_abilities(abilities)
 
         plugin = LoadedPlugin(
             manifest=manifest,

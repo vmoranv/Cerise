@@ -22,6 +22,7 @@ class InitializeResult:
     success: bool
     abilities: list[dict] = field(default_factory=list)
     skills: list[dict] = field(default_factory=list)
+    tools: list[dict] = field(default_factory=list)
     error: str | None = None
 
 
@@ -31,7 +32,10 @@ class ExecuteParams:
 
     ability: str
     skill: str | None = None
+    tool: str | None = None
+    name: str | None = None
     params: dict = field(default_factory=dict)
+    arguments: dict = field(default_factory=dict)
     context: dict = field(default_factory=dict)
 
 

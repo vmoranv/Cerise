@@ -146,11 +146,22 @@ class PluginRunner:
                 "success": success,
                 "abilities": abilities,
                 "skills": abilities,
+                "tools": abilities,
             }
 
         elif method == "execute":
-            ability = params.get("ability") or params.get("skill") or ""
-            exec_params = params.get("params", {})
+            ability = (
+                params.get("ability")
+                or params.get("skill")
+                or params.get("tool")
+                or params.get("name")
+                or ""
+            )
+            exec_params = params.get("params")
+            if exec_params is None:
+                exec_params = params.get("arguments")
+            if exec_params is None:
+                exec_params = {}
             context_data = params.get("context", {})
 
             context = AbilityContext(
