@@ -13,10 +13,10 @@ repos:
       - id: ruff-check
         types_or: [python, pyi]
         args: [--fix]
-        # Pre-push only: uvx pre-commit install --hook-type pre-push
-        stages: [pre-push]
+        # 在 commit 阶段检查，这样问题会在提交时立即被发现和修复
+        stages: [pre-commit]
       # Run the formatter
       - id: ruff-format
         types_or: [python, pyi]
-        # Pre-push only: uvx pre-commit install --hook-type pre-push
-        stages: [pre-push]
+        # 在 commit 阶段格式化
+        stages: [pre-commit]
