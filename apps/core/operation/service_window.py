@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from re import Pattern
 
 from apps.core.contracts.events import OPERATION_WINDOW_CONNECTED, build_operation_window_connected
@@ -25,6 +26,8 @@ class OperationWindowMixin:
         if not self._interaction.connect(hwnd):
             self._capture.close()
             return False
+        with contextlib.suppress(Exception):
+            self._gamepad.connect()
         self._hwnd = hwnd
         self._publish_event(
             OPERATION_WINDOW_CONNECTED,

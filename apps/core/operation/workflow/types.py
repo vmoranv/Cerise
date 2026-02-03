@@ -15,6 +15,18 @@ if TYPE_CHECKING:
     from ..service import OperationService
 
 
+@dataclass
+class CancelToken:
+    """Cancellation token for synchronous workflows."""
+
+    cancelled: bool = False
+    reason: str = ""
+
+    def cancel(self, reason: str = "") -> None:
+        self.cancelled = True
+        self.reason = str(reason or self.reason)
+
+
 class ActionStatus(Enum):
     """动作状态"""
 

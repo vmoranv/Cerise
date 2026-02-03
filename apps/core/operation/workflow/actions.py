@@ -15,6 +15,7 @@ from .types import ActionResult, ActionStatus
 
 if TYPE_CHECKING:
     from ..service import OperationService
+    from .types import CancelToken
 
 
 class Action(ABC):
@@ -27,7 +28,7 @@ class Action(ABC):
         self.result: ActionResult | None = None
 
     @abstractmethod
-    def execute(self, service: OperationService) -> ActionResult: ...
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult: ...
 
     def reset(self) -> None:
         self.status = ActionStatus.PENDING
@@ -44,6 +45,8 @@ class ClickAction(Action):
         template: str | None = None,
         threshold: float = 0.8,
         button: str = "left",
+        base_width: int | None = None,
+        base_height: int | None = None,
         wait_before: float = 0.0,
         wait_after: float = 0.1,
         name: str = "",
@@ -54,10 +57,12 @@ class ClickAction(Action):
         self.template = template
         self.threshold = threshold
         self.button = button
+        self.base_width = base_width
+        self.base_height = base_height
         self.wait_before = wait_before
         self.wait_after = wait_after
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
         if self.wait_before > 0:
             time.sleep(self.wait_before)
@@ -71,7 +76,10 @@ class ClickAction(Action):
                     )
                 service.click_box(box, self.button)
             elif self.x is not None and self.y is not None:
-                service.click(self.x, self.y, self.button)
+                x, y = self.x, self.y
+                if self.base_width and self.base_height:
+                    x, y = service.scale_point(x, y, base_width=self.base_width, base_height=self.base_height)
+                service.click(x, y, self.button)
             else:
                 return ActionResult(ActionStatus.FAILED, "No target", duration=time.time() - start)
 
@@ -99,7 +107,7 @@ class KeyPressAction(Action):
         self.modifiers = modifiers or []
         self.wait_after = wait_after
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
         try:
             if self.modifiers:
@@ -129,8 +137,10 @@ class WaitAction(Action):
         self.template = template
         self.threshold = threshold
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
+        if cancel_token and cancel_token.cancelled:
+            return ActionResult(ActionStatus.SKIPPED, cancel_token.reason or "Cancelled", duration=time.time() - start)
         if self.template:
             box = service.wait_template(self.template, self.threshold, timeout=self.timeout)
             if box is None:
@@ -138,7 +148,17 @@ class WaitAction(Action):
                     ActionStatus.TIMEOUT, f"Template not found: {self.template}", duration=time.time() - start
                 )
             return ActionResult(ActionStatus.SUCCESS, "Template found", data=box, duration=time.time() - start)
-        time.sleep(self.duration)
+        if self.duration > 0:
+            remaining = float(self.duration)
+            step = 0.05
+            while remaining > 0:
+                if cancel_token and cancel_token.cancelled:
+                    return ActionResult(
+                        ActionStatus.SKIPPED, cancel_token.reason or "Cancelled", duration=time.time() - start
+                    )
+                sleep_for = step if remaining > step else remaining
+                time.sleep(sleep_for)
+                remaining -= sleep_for
         return ActionResult(ActionStatus.SUCCESS, f"Waited {self.duration}s", duration=time.time() - start)
 
 
@@ -150,7 +170,7 @@ class TypeTextAction(Action):
         self.text = text
         self.interval = interval
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
         try:
             service.type_text(self.text, self.interval)
@@ -174,13 +194,13 @@ class ConditionalAction(Action):
         self.then_action = then_action
         self.else_action = else_action
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
         try:
             if self.condition(service):
-                result = self.then_action.execute(service)
+                result = self.then_action.execute(service, cancel_token)
             elif self.else_action:
-                result = self.else_action.execute(service)
+                result = self.else_action.execute(service, cancel_token)
             else:
                 result = ActionResult(ActionStatus.SKIPPED, "Condition not met")
             result.duration = time.time() - start
@@ -207,11 +227,18 @@ class LoopAction(Action):
         self.until = until
         self.interval = interval
 
-    def execute(self, service: OperationService) -> ActionResult:
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
         start = time.time()
         iterations = 0
 
         while True:
+            if cancel_token and cancel_token.cancelled:
+                return ActionResult(
+                    ActionStatus.SKIPPED,
+                    cancel_token.reason or "Cancelled",
+                    data=iterations,
+                    duration=time.time() - start,
+                )
             if time.time() - start > self.timeout:
                 return ActionResult(
                     ActionStatus.TIMEOUT,
@@ -224,7 +251,7 @@ class LoopAction(Action):
             if self.until and self.until(service):
                 break
 
-            result = self.action.execute(service)
+            result = self.action.execute(service, cancel_token)
             iterations += 1
 
             if result.status == ActionStatus.FAILED:

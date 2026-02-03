@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from apps.core.contracts.events import OPERATION_INPUT_PERFORMED, build_operation_input_performed
 
+from .input.gamepad import GamepadState
 from .vision.box import Box
 
 
@@ -168,6 +169,60 @@ class OperationInputMixin:
                 params={"keys": list(keys)},
             ),
         )
+
+    # ========== Gamepad ==========
+
+    def gamepad_button(self, button: str, pressed: bool) -> None:
+        """Set a gamepad button state."""
+        self._gamepad.set_button(button, pressed)
+        self._publish_event(
+            OPERATION_INPUT_PERFORMED,
+            build_operation_input_performed(
+                action="gamepad.button",
+                hwnd=self._hwnd,
+                params={"button": str(button), "pressed": bool(pressed)},
+            ),
+        )
+
+    def gamepad_axis(self, axis: str, value: float) -> None:
+        """Set a gamepad axis value (normalized -1..1)."""
+        self._gamepad.set_axis(axis, float(value))
+        self._publish_event(
+            OPERATION_INPUT_PERFORMED,
+            build_operation_input_performed(
+                action="gamepad.axis",
+                hwnd=self._hwnd,
+                params={"axis": str(axis), "value": float(value)},
+            ),
+        )
+
+    def gamepad_state(self, *, axes: dict[str, float] | None = None, buttons: dict[str, bool] | None = None) -> None:
+        """Apply a full gamepad state snapshot."""
+        state = GamepadState(axes=dict(axes or {}), buttons=dict(buttons or {}))
+        self._gamepad.set_state(state)
+        self._publish_event(
+            OPERATION_INPUT_PERFORMED,
+            build_operation_input_performed(
+                action="gamepad.state",
+                hwnd=self._hwnd,
+                params={"axes": state.axes, "buttons": state.buttons},
+            ),
+        )
+
+    async def gamepad_policy_step(self, *, meta: dict[str, object] | None = None) -> GamepadState:
+        """Capture a frame and apply the configured policy output as gamepad state."""
+        frame = self._capture.get_frame()
+        state = await self._policy.predict(frame=frame, meta=dict(meta or {}))
+        self._gamepad.set_state(state)
+        self._publish_event(
+            OPERATION_INPUT_PERFORMED,
+            build_operation_input_performed(
+                action="gamepad.policy",
+                hwnd=self._hwnd,
+                params={"axes": state.axes, "buttons": state.buttons, "meta": dict(meta or {})},
+            ),
+        )
+        return state
 
     def click_template(
         self,

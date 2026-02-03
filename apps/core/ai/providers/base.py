@@ -14,8 +14,10 @@ class Message:
     """Chat message"""
 
     role: str  # "system" | "user" | "assistant"
-    content: str
+    content: str | list[dict]
     name: str | None = None
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = None
 
 
 @dataclass

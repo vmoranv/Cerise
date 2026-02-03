@@ -1,0 +1,21 @@
+# MCP servers configuration (optional)
+#
+# This file is loaded from ~/.cerise/mcp.yaml (or mcp.toml). It allows Cerise to
+# register external MCP tools as Cerise abilities/tools.
+#
+# Notes:
+# - Only `transport: stdio` is supported currently.
+# - `env` values support ${VAR} expansion (loaded-time).
+#
+servers:
+  - id: example
+    enabled: false
+    transport: stdio
+    command: python
+    args:
+      - -m
+      - example_mcp_server
+    env:
+      EXAMPLE_API_KEY: ${EXAMPLE_API_KEY}
+    tool_name_prefix: ""
+

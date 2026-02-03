@@ -5,6 +5,8 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, Request
 
 from ..ai import DialogueEngine
+from ..ai.agents import AgentService
+from ..ai.skills import SkillService
 from ..character import EmotionStateMachine, PersonalityModel
 from ..services.ports import EmotionService, Live2DDriver
 from .container import AppServices
@@ -35,3 +37,15 @@ def get_personality(services: AppServices = Depends(get_services)) -> Personalit
 
 def get_live2d(services: AppServices = Depends(get_services)) -> Live2DDriver:
     return services.live2d
+
+
+def get_agent_service(services: AppServices = Depends(get_services)) -> AgentService:
+    if services.agents is None:
+        raise HTTPException(status_code=500, detail="Agent service not initialized")
+    return services.agents
+
+
+def get_skill_service(services: AppServices = Depends(get_services)) -> SkillService:
+    if services.skills is None:
+        raise HTTPException(status_code=500, detail="Skill service not initialized")
+    return services.skills

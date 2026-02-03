@@ -15,7 +15,7 @@ class Message:
     """A single message in a conversation"""
 
     role: str  # "system", "user", "assistant", "tool"
-    content: str
+    content: str | list[dict]
     name: str | None = None
     tool_calls: list[dict] | None = None
     tool_call_id: str | None = None
@@ -47,7 +47,7 @@ class Session:
     updated_at: datetime = field(default_factory=datetime.now)
     max_history: int = 50  # Maximum messages to keep
 
-    def add_message(self, role: str, content: str, **kwargs) -> Message:
+    def add_message(self, role: str, content: str | list[dict], **kwargs) -> Message:
         """Add a message to the session"""
         message = Message(role=role, content=content, **kwargs)
         self.messages.append(message)
@@ -63,7 +63,7 @@ class Session:
 
         return message
 
-    def add_user_message(self, content: str) -> Message:
+    def add_user_message(self, content: str | list[dict]) -> Message:
         """Add a user message"""
         return self.add_message("user", content)
 
@@ -109,7 +109,10 @@ class Session:
         """Rough estimate of token count (4 chars ≈ 1 token)"""
         total = len(self.system_prompt)
         for msg in self.messages:
-            total += len(msg.content)
+            if isinstance(msg.content, str):
+                total += len(msg.content)
+            elif isinstance(msg.content, list):
+                total += sum(len(part.get("text", "")) for part in msg.content if isinstance(part, dict))
         return total // 4
 
     def to_dict(self) -> dict:

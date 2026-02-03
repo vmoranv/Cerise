@@ -5,6 +5,7 @@ Core engine for managing AI conversations with multi-provider support.
 """
 
 import logging
+from typing import TYPE_CHECKING
 
 from ...abilities import AbilityRegistry
 from ...contracts.events import (
@@ -25,6 +26,9 @@ from .tools import handle_tool_calls
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from ..skills import SkillService
+
 
 class DialogueEngine(StreamChatMixin):
     """Main dialogue engine for AI conversations"""
@@ -40,6 +44,9 @@ class DialogueEngine(StreamChatMixin):
         system_prompt: str = "",
         memory_service: MemoryService | None = None,
         memory_recall: bool = True,
+        skill_service: "SkillService | None" = None,
+        skill_recall: bool = False,
+        skill_top_k: int = 3,
         provider_registry: ProviderRegistryProtocol | None = None,
         ability_registry: AbilityRegistryProtocol | None = None,
     ):
@@ -53,8 +60,29 @@ class DialogueEngine(StreamChatMixin):
         self._message_bus = message_bus
         self._memory_service = memory_service
         self._memory_recall = memory_recall
+        self._skill_service = skill_service
+        self._skill_recall = skill_recall
+        self._skill_top_k = max(1, int(skill_top_k))
         self._provider_registry = provider_registry or ProviderRegistry
         self._ability_registry = ability_registry or AbilityRegistry
+
+    @staticmethod
+    def _content_to_text(content: str | list[dict]) -> str:
+        if isinstance(content, str):
+            return content
+        parts: list[str] = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text":
+                text = item.get("text")
+                if isinstance(text, str) and text:
+                    parts.append(text)
+            elif item.get("type") == "image_url":
+                parts.append("[image]")
+            else:
+                parts.append("[content]")
+        return "\n".join(parts).strip()
 
     def create_session(
         self,
@@ -87,7 +115,7 @@ class DialogueEngine(StreamChatMixin):
     async def chat(
         self,
         session: Session,
-        user_message: str,
+        user_message: str | list[dict],
         provider: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
@@ -97,13 +125,14 @@ class DialogueEngine(StreamChatMixin):
         use_tools: bool = True,
     ) -> str:
         """Send a message and get a response"""
+        user_text = self._content_to_text(user_message)
         # Add user message
         session.add_user_message(user_message)
 
         # Emit event
         await self._message_bus.emit(
             DIALOGUE_USER_MESSAGE,
-            build_dialogue_user_message(session_id=session.id, content=user_message),
+            build_dialogue_user_message(session_id=session.id, content=user_text),
             source="dialogue_engine",
         )
 
@@ -116,10 +145,20 @@ class DialogueEngine(StreamChatMixin):
         # Prepare messages
         messages = await build_context_messages(
             session=session,
-            query=user_message,
+            query=user_text,
             memory_service=self._memory_service,
             memory_recall=self._memory_recall,
         )
+
+        if self._skill_service and self._skill_recall:
+            try:
+                skills = await self._skill_service.search(user_text, top_k=self._skill_top_k)
+                injection = self._skill_service.build_injection_block(skills)
+            except Exception:
+                injection = ""
+            if injection:
+                insert_at = 1 if messages and messages[0].role == "system" else 0
+                messages.insert(insert_at, ProviderMessage(role="system", content=injection))
 
         temperature = self.default_temperature if temperature is None else temperature
         top_p = self.default_top_p if top_p is None else top_p
@@ -147,6 +186,7 @@ class DialogueEngine(StreamChatMixin):
                 options=options,
                 ability_registry=self._ability_registry,
                 provider_registry=self._provider_registry,
+                skill_service=self._skill_service,
             )
         else:
             response_content = response.content

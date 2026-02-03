@@ -43,4 +43,15 @@ async def build_context_messages(
             logger.exception("Memory recall failed")
 
     context = _prepend_memory_context(context, memory_context)
-    return [ProviderMessage(role=m["role"], content=m["content"]) for m in context]
+    messages: list[ProviderMessage] = []
+    for item in context:
+        messages.append(
+            ProviderMessage(
+                role=item.get("role", ""),
+                content=item.get("content", ""),
+                name=item.get("name"),
+                tool_calls=item.get("tool_calls"),
+                tool_call_id=item.get("tool_call_id"),
+            )
+        )
+    return messages

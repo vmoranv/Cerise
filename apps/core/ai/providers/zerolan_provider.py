@@ -53,9 +53,26 @@ class ZerolanProvider(BaseProvider):
         if last_user_idx is None:
             last_user_idx = len(cleaned) - 1
 
-        text = cleaned[last_user_idx].content
-        history = [{"role": msg.role, "content": msg.content, "metadata": None} for msg in cleaned[:last_user_idx]]
+        text = self._normalize_text(cleaned[last_user_idx].content)
+        history = [
+            {"role": msg.role, "content": self._normalize_text(msg.content), "metadata": None}
+            for msg in cleaned[:last_user_idx]
+        ]
         return text, history
+
+    @staticmethod
+    def _normalize_text(content: str | list[dict]) -> str:
+        if isinstance(content, str):
+            return content
+        parts: list[str] = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "text" and isinstance(item.get("text"), str):
+                parts.append(item["text"])
+            elif item.get("type") == "image_url":
+                parts.append("[image]")
+        return "\n".join(parts).strip()
 
     async def chat(self, messages: list[Message], options: ChatOptions) -> ChatResponse:
         text, history = self._split_history(messages)

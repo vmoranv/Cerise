@@ -120,6 +120,70 @@ class TestProviderRegistry:
         assert instance.base_url == "http://example.local/v1"
         assert instance.extra_body == {"foo": "bar"}
 
+    def test_create_from_config_supports_common_type_aliases_and_key_list(self):
+        """Provider config should accept common type aliases and key lists."""
+        ProviderRegistry._register_builtin_providers()
+
+        config = ProviderConfig(
+            id="test-openai-alias",
+            type="openai_chat_completion",
+            config={
+                "key": ["test-key-1", "test-key-2"],
+                "api_base": "http://example.local/v1",
+            },
+        )
+
+        instance = ProviderRegistry._create_from_config(config)
+        assert isinstance(instance, OpenAIProvider)
+        assert instance.base_url == "http://example.local/v1"
+
+    def test_create_from_config_normalizes_claude_thinking_alias(self):
+        """Provider config should normalize thinking config keys for Claude."""
+        ProviderRegistry._register_builtin_providers()
+        if "claude" not in ProviderRegistry._provider_types:
+            pytest.skip("Claude provider type not registered")
+
+        from apps.core.ai.providers.claude_provider import ClaudeProvider
+
+        thinking = {"type": "enabled", "budget_tokens": 1024}
+        config = ProviderConfig(
+            id="test-claude-alias",
+            type="anthropic_chat_completion",
+            config={
+                "key": ["test-key"],
+                "anth_thinking_config": thinking,
+            },
+        )
+
+        instance = ProviderRegistry._create_from_config(config)
+        assert isinstance(instance, ClaudeProvider)
+        assert instance.thinking == thinking
+
+    def test_create_from_config_normalizes_gemini_safety_settings_alias(self):
+        """Provider config should normalize safety_settings keys for Gemini."""
+        ProviderRegistry._register_builtin_providers()
+        if "gemini" not in ProviderRegistry._provider_types:
+            pytest.skip("Gemini provider type not registered")
+
+        from apps.core.ai.providers.gemini_provider import GeminiProvider
+
+        safety = {
+            "harassment": "BLOCK_NONE",
+            "hate_speech": "BLOCK_ONLY_HIGH",
+        }
+        config = ProviderConfig(
+            id="test-gemini-alias",
+            type="googlegenai_chat_completion",
+            config={
+                "key": ["test-key"],
+                "gm_safety_settings": safety,
+            },
+        )
+
+        instance = ProviderRegistry._create_from_config(config)
+        assert isinstance(instance, GeminiProvider)
+        assert instance._safety_settings == safety
+
 
 class TestProviderRegistryAsync:
     """Async tests for ProviderRegistry."""

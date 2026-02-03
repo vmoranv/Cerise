@@ -43,14 +43,38 @@ def normalize_stop(stop: str | list[str] | None) -> list[str] | None:
     return [item for item in stop if isinstance(item, str) and item]
 
 
-def _require_text(value: object | None, *, field_name: str, allow_none: bool = False) -> str | None:
+def _require_content(
+    value: object | None,
+    *,
+    field_name: str,
+    allow_none: bool = False,
+) -> str | list[dict] | None:
     if value is None:
         if allow_none:
             return None
         raise ValueError(f"{field_name} is required")
-    if not isinstance(value, str):
-        raise ValueError(f"Only string content is supported for {field_name}")
-    return value
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        parts = [item for item in value if isinstance(item, dict)]
+        if parts:
+            return parts
+    raise ValueError(f"Only string or list content is supported for {field_name}")
+
+
+def _content_has_user_value(content: str | list[dict] | None) -> bool:
+    if content is None:
+        return False
+    if isinstance(content, str):
+        return bool(content.strip())
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "text" and isinstance(item.get("text"), str) and item["text"].strip():
+            return True
+        if item.get("type") == "image_url":
+            return True
+    return False
 
 
 def build_session_from_messages(
@@ -59,7 +83,7 @@ def build_session_from_messages(
     session_id: str,
     user_id: str = "",
     default_system_prompt: str = "",
-) -> tuple[Session, str]:
+) -> tuple[Session, str | list[dict]]:
     """Build a Cerise Session from OpenAI messages.
 
     - All system messages are concatenated into Session.system_prompt.
@@ -74,9 +98,8 @@ def build_session_from_messages(
     if last.role != "user":
         raise ValueError("Last message must be role 'user'")
 
-    last_content = _require_text(last.content, field_name="messages[-1].content")
-    assert last_content is not None
-    if not last_content.strip():
+    last_content = _require_content(last.content, field_name="messages[-1].content")
+    if not _content_has_user_value(last_content):
         raise ValueError("User message is empty")
 
     system_parts: list[str] = []
@@ -86,9 +109,8 @@ def build_session_from_messages(
     for msg in messages:
         if msg.role != "system":
             continue
-        content = _require_text(msg.content, field_name="system message content")
-        assert content is not None
-        if content.strip():
+        content = _require_content(msg.content, field_name="system message content")
+        if isinstance(content, str) and content.strip():
             system_parts.append(content)
 
     session = Session(
@@ -101,12 +123,12 @@ def build_session_from_messages(
         if msg.role == "system":
             continue
 
-        content: str
+        content: str | list[dict]
         if msg.role == "assistant":
-            content_value = _require_text(msg.content, field_name="assistant message content", allow_none=True)
+            content_value = _require_content(msg.content, field_name="assistant message content", allow_none=True)
             content = content_value or ""
         else:
-            content_value = _require_text(msg.content, field_name=f"{msg.role} message content")
+            content_value = _require_content(msg.content, field_name=f"{msg.role} message content")
             content = content_value or ""
 
         session.add_message(

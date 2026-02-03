@@ -138,6 +138,27 @@ class ProvidersConfig(BaseModel):
     providers: list[ProviderConfig] = Field(default_factory=list)
 
 
+# ----- MCP Configuration -----
+
+
+class McpServerEntry(BaseModel):
+    """Single MCP server configuration."""
+
+    id: str
+    enabled: bool = True
+    transport: str = "stdio"  # stdio | sse | websocket | streamable_http (future)
+    command: str = ""
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] | None = None
+    tool_name_prefix: str = ""
+
+
+class McpConfig(BaseModel):
+    """MCP servers configuration."""
+
+    servers: list[McpServerEntry] = Field(default_factory=list)
+
+
 # ----- Character Configuration -----
 
 

@@ -9,7 +9,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
 
 <img src="https://img.shields.io/badge/🌸_Cerise-樱桃粉主题-de3163?style=for-the-badge" alt="Cerise Theme" />
 
@@ -473,7 +473,7 @@ rm -f apps/cerise_webui/.next/dev/lock
 
 ## 📄 开源协议
 
-本项目采用 [MIT License](LICENSE) 开源协议。
+本项目采用 [GNU AGPLv3](LICENSE) 开源协议。
 
 ---
 

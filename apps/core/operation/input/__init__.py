@@ -38,19 +38,27 @@ from .constants import (
     WM_RBUTTONDOWN,
     WM_RBUTTONUP,
 )
+from .gamepad import Gamepad, GamepadState, NullGamepad
 from .keymap import (
     KeyBinding,
     KeyMap,
     create_arrow_preset,
     create_wasd_preset,
 )
+from .policy import GamepadPolicy, NullGamepadPolicy
 from .win32 import Win32Interaction
 
 __all__ = [
     # Protocol
     "Interaction",
+    "Gamepad",
+    "GamepadPolicy",
     # Win32 Implementation
     "Win32Interaction",
+    "NullGamepad",
+    "NullGamepadPolicy",
+    # Gamepad state
+    "GamepadState",
     # KeyMap
     "KeyBinding",
     "KeyMap",

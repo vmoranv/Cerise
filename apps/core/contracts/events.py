@@ -2,6 +2,20 @@
 
 from __future__ import annotations
 
+from .events_agent import (
+    AGENT_CREATED,
+    AGENT_MESSAGE_CREATED,
+    AGENT_WAKEUP_COMPLETED,
+    AGENT_WAKEUP_STARTED,
+    AgentCreatedPayload,
+    AgentMessageCreatedPayload,
+    AgentWakeupCompletedPayload,
+    AgentWakeupStartedPayload,
+    build_agent_created,
+    build_agent_message_created,
+    build_agent_wakeup_completed,
+    build_agent_wakeup_started,
+)
 from .events_dialogue import (
     DIALOGUE_ASSISTANT_RESPONSE,
     DIALOGUE_USER_MESSAGE,
@@ -60,6 +74,10 @@ from .events_operation import (
 )
 
 EVENT_NAMES = (
+    AGENT_CREATED,
+    AGENT_MESSAGE_CREATED,
+    AGENT_WAKEUP_STARTED,
+    AGENT_WAKEUP_COMPLETED,
     DIALOGUE_USER_MESSAGE,
     DIALOGUE_ASSISTANT_RESPONSE,
     EMOTION_ANALYSIS_STARTED,
@@ -79,6 +97,10 @@ EVENT_NAMES = (
 )
 
 __all__ = [
+    "AGENT_CREATED",
+    "AGENT_MESSAGE_CREATED",
+    "AGENT_WAKEUP_STARTED",
+    "AGENT_WAKEUP_COMPLETED",
     "DIALOGUE_USER_MESSAGE",
     "DIALOGUE_ASSISTANT_RESPONSE",
     "EMOTION_ANALYSIS_STARTED",
@@ -95,6 +117,10 @@ __all__ = [
     "OPERATION_INPUT_PERFORMED",
     "OPERATION_TEMPLATE_MATCHED",
     "OPERATION_ACTION_COMPLETED",
+    "AgentCreatedPayload",
+    "AgentMessageCreatedPayload",
+    "AgentWakeupStartedPayload",
+    "AgentWakeupCompletedPayload",
     "DialogueUserMessagePayload",
     "DialogueAssistantResponsePayload",
     "EmotionAnalysisStartedPayload",
@@ -111,6 +137,10 @@ __all__ = [
     "OperationInputPerformedPayload",
     "OperationTemplateMatchedPayload",
     "OperationActionCompletedPayload",
+    "build_agent_created",
+    "build_agent_message_created",
+    "build_agent_wakeup_started",
+    "build_agent_wakeup_completed",
     "build_dialogue_user_message",
     "build_dialogue_assistant_response",
     "build_emotion_analysis_started",

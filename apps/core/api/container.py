@@ -4,11 +4,15 @@ Service container wiring for the API layer.
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..abilities import AbilityRegistry, CapabilityScheduler
+from ..abilities.mcp_manager import McpManager
 from ..ai import DialogueEngine, EmotionAnalyzer
+from ..ai.agents import AgentService
 from ..ai.dialogue import ProactiveChatService, load_proactive_config
 from ..ai.emotion import EmotionConfigManager
 from ..ai.memory import MemoryContextBuilder, MemoryEngine, MemoryPipeline, build_memory_extractor, load_memory_config
@@ -18,10 +22,12 @@ from ..ai.memory.layer_store import (
     build_semantic_facts_store,
 )
 from ..ai.providers import ProviderRegistry
+from ..ai.skills import SkillService
 from ..character import EmotionStateMachine, PersonalityModel
 from ..config import get_config_loader
 from ..events import Live2DEmotionHandler, MemoryEventHandler, MemoryLayerEventHandler
 from ..infrastructure import EventBus, StateStore, set_default_bus
+from ..infrastructure.mcp import McpServerConfig
 from ..l2d import Live2DService
 from ..operation import OperationService
 from ..plugins import PluginBridge, PluginManager
@@ -40,6 +46,8 @@ from ..services import (
     ProceduralHabitsService,
     SemanticFactsService,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -67,6 +75,9 @@ class AppServices:
     dialogue_engine: DialogueEngine
     proactive_chat: ProactiveChatService | None = None
     operation: OperationService | None = None
+    agents: AgentService | None = None
+    skills: SkillService | None = None
+    mcp: McpManager | None = None
 
 
 async def build_services() -> AppServices:
@@ -129,6 +140,36 @@ async def build_services() -> AppServices:
     plugin_bridge = PluginBridge(plugin_manager)
     await plugin_bridge.register_plugin_abilities()
 
+    # MCP servers (optional): register MCP tools as abilities.
+    mcp_servers: list[McpServerConfig] = []
+    for entry in loader.get_mcp_config().servers:
+        if not entry.enabled:
+            continue
+        if entry.transport and entry.transport != "stdio":
+            logger.warning("Unsupported MCP transport '%s' for server '%s'", entry.transport, entry.id)
+            continue
+        if not entry.command:
+            logger.warning("MCP server '%s' missing command, skipping", entry.id)
+            continue
+
+        merged_env = None
+        if entry.env:
+            merged_env = os.environ.copy()
+            merged_env.update(entry.env)
+
+        mcp_servers.append(
+            McpServerConfig(
+                id=entry.id,
+                command=entry.command,
+                args=entry.args,
+                env=merged_env,
+                enabled=entry.enabled,
+                tool_name_prefix=entry.tool_name_prefix or None,
+            ),
+        )
+    mcp = McpManager(servers=mcp_servers)
+    await mcp.load_and_register(registry=AbilityRegistry)
+
     live2d_service = Live2DService()
     live2d = LocalLive2DService(live2d_service)
     live2d_events = Live2DEmotionHandler(bus=message_bus, live2d=live2d)
@@ -142,6 +183,8 @@ async def build_services() -> AppServices:
         owner_provider=plugin_manager,
     )
 
+    skills = SkillService(store=state_store)
+
     dialogue_engine = DialogueEngine(
         default_provider=app_config.ai.default_provider,
         default_model=app_config.ai.default_model,
@@ -153,6 +196,8 @@ async def build_services() -> AppServices:
         memory_service=memory_service,
         provider_registry=ProviderRegistry,
         ability_registry=capability_scheduler,
+        skill_service=skills,
+        skill_recall=False,
     )
 
     proactive_config = load_proactive_config()
@@ -163,6 +208,8 @@ async def build_services() -> AppServices:
     )
     proactive_chat.attach()
     await proactive_chat.start()
+
+    agents = AgentService(store=state_store, bus=message_bus, dialogue_engine=dialogue_engine)
 
     return AppServices(
         message_bus=message_bus,
@@ -186,6 +233,9 @@ async def build_services() -> AppServices:
         dialogue_engine=dialogue_engine,
         proactive_chat=proactive_chat,
         operation=OperationService(bus=message_bus),
+        agents=agents,
+        skills=skills,
+        mcp=mcp,
     )
 
 
@@ -195,6 +245,8 @@ async def shutdown_services(services: AppServices) -> None:
         services.operation.close()
     if services.proactive_chat is not None:
         await services.proactive_chat.shutdown()
+    if services.mcp is not None:
+        await services.mcp.close()
     await services.plugin_manager.unload_all()
     await services.message_bus.stop()
 

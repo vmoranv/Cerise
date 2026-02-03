@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .actions import Action
-from .types import ActionResult, ActionStatus, TriggerConfig, TriggerType
+from .types import ActionResult, ActionStatus, CancelToken, TriggerConfig, TriggerType
 
 if TYPE_CHECKING:
     from ..service import OperationService
@@ -31,10 +31,37 @@ class ActionSequence:
         self.actions.append(action)
         return self
 
-    def execute(self, service: OperationService) -> list[ActionResult]:
+    def execute(
+        self,
+        service: OperationService,
+        *,
+        cancel_token: CancelToken | None = None,
+        timeout: float | None = None,
+    ) -> list[ActionResult]:
         results: list[ActionResult] = []
+        start = time.time()
+        effective_timeout = timeout
+        if effective_timeout is None:
+            effective_timeout = 0.0
+        deadline = start + float(effective_timeout) if effective_timeout and effective_timeout > 0 else None
         for action in self.actions:
-            result = action.execute(service)
+            if cancel_token and cancel_token.cancelled:
+                result = ActionResult(ActionStatus.SKIPPED, cancel_token.reason or "Cancelled", duration=0.0)
+                action.result = result
+                action.status = result.status
+                results.append(result)
+                service.emit_action_result(action, result)
+                break
+            if deadline is not None and time.time() > deadline:
+                result = ActionResult(ActionStatus.TIMEOUT, "Sequence timeout", duration=0.0)
+                action.result = result
+                action.status = result.status
+                results.append(result)
+                service.emit_action_result(action, result)
+                break
+
+            action.status = ActionStatus.RUNNING
+            result = action.execute(service, cancel_token)
             action.result = result
             action.status = result.status
             results.append(result)

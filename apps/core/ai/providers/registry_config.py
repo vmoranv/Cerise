@@ -14,6 +14,34 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_PROVIDER_TYPE_ALIASES: dict[str, str] = {
+    # Common OpenAI-compatible naming patterns.
+    "openai_chat_completion": "openai",
+    "anthropic_chat_completion": "claude",
+    "googlegenai_chat_completion": "gemini",
+    "groq_chat_completion": "groq",
+    "xai_chat_completion": "xai",
+    "zhipu_chat_completion": "zhipu",
+}
+
+
+def _normalize_provider_type(provider_type: str) -> str:
+    """Normalize provider type names from common external templates."""
+
+    mapped = _PROVIDER_TYPE_ALIASES.get(provider_type)
+    if mapped:
+        return mapped
+
+    if provider_type.endswith("_chat_completion"):
+        base = provider_type.removesuffix("_chat_completion")
+        if base == "anthropic":
+            return "claude"
+        if base in {"googlegenai", "google_genai", "google-genai"}:
+            return "gemini"
+        return base
+
+    return provider_type
+
 
 def _apply_alias(kwargs: dict, *, src: str, dest: str) -> None:
     if src not in kwargs or dest in kwargs:
@@ -34,9 +62,18 @@ def _normalize_provider_kwargs(provider_type: str, kwargs: dict) -> dict:
     normalized = dict(kwargs)
 
     # Common aliases used by other projects/templates.
+    if "api_key" not in normalized and "api_keys" not in normalized and "key" in normalized:
+        key_value = normalized.pop("key")
+        if isinstance(key_value, list):
+            normalized["api_keys"] = [item for item in key_value if isinstance(item, str) and item.strip()]
+        elif isinstance(key_value, str) and key_value.strip():
+            normalized["api_key"] = key_value
+
     _apply_alias(normalized, src="api_base", dest="base_url")
     _apply_alias(normalized, src="api_base_url", dest="base_url")
     _apply_alias(normalized, src="custom_extra_body", dest="extra_body")
+    _apply_alias(normalized, src="gm_safety_settings", dest="safety_settings")
+    _apply_alias(normalized, src="anth_thinking_config", dest="thinking")
 
     # Embedding provider aliases (common).
     _apply_alias(normalized, src="embedding_api_key", dest="api_key")
@@ -66,19 +103,21 @@ def _filter_kwargs_for_provider(
 ) -> dict:
     """Drop unexpected kwargs to avoid hard failures on extra config keys."""
 
-    signature = inspect.signature(provider_class.__init__)
-    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
-        return kwargs
-
     allowed: set[str] = set()
-    for name, param in signature.parameters.items():
-        if name == "self":
+    for cls in provider_class.mro():
+        init = cls.__dict__.get("__init__")
+        if init is None:
             continue
-        if param.kind in {
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            inspect.Parameter.KEYWORD_ONLY,
-        }:
-            allowed.add(name)
+        with contextlib.suppress(TypeError, ValueError):
+            signature = inspect.signature(init)
+            for name, param in signature.parameters.items():
+                if name == "self":
+                    continue
+                if param.kind in {
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                }:
+                    allowed.add(name)
 
     unknown = sorted(key for key in kwargs if key not in allowed)
     if unknown:
@@ -202,10 +241,11 @@ class ProviderRegistryConfigMixin:
     @classmethod
     def _create_from_config(cls, config: "ProviderConfig") -> BaseProvider:
         """Create provider instance from config."""
-        provider_type = config.type
+        provider_type_raw = config.type
+        provider_type = _normalize_provider_type(provider_type_raw)
 
         if provider_type not in cls._provider_types:
-            raise ValueError(f"Unknown provider type: {provider_type}")
+            raise ValueError(f"Unknown provider type: {provider_type_raw} (normalized={provider_type})")
 
         provider_class = cls._provider_types[provider_type]
         kwargs = _normalize_provider_kwargs(provider_type, config.config.copy())
@@ -213,6 +253,6 @@ class ProviderRegistryConfigMixin:
 
         instance = provider_class(**kwargs)
         cls._instances[config.id] = instance
-        logger.info("Created provider: %s (type=%s)", config.id, provider_type)
+        logger.info("Created provider: %s (type=%s)", config.id, provider_type_raw)
 
         return instance

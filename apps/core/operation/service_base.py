@@ -16,6 +16,8 @@ from apps.core.infrastructure import Event, EventBus
 from .capture.base import CaptureMethod
 from .capture.win32_bitblt import Win32BitBltCapture
 from .input.base import Interaction
+from .input.gamepad import Gamepad, NullGamepad
+from .input.policy import GamepadPolicy, NullGamepadPolicy
 from .input.win32 import Win32Interaction
 from .vision.box import Box
 
@@ -33,10 +35,14 @@ class OperationServiceBase:
         self,
         capture: CaptureMethod | None = None,
         interaction: Interaction | None = None,
+        gamepad: Gamepad | None = None,
+        policy: GamepadPolicy | None = None,
         bus: EventBus | None = None,
     ) -> None:
         self._capture = capture or Win32BitBltCapture()
         self._interaction = interaction or Win32Interaction()
+        self._gamepad = gamepad or NullGamepad()
+        self._policy = policy or NullGamepadPolicy()
         self._bus = bus
         self._hwnd: int = 0
         self._template_cache: dict[str, np.ndarray] = {}
@@ -98,6 +104,32 @@ class OperationServiceBase:
         """Window client height."""
         return self._capture.height
 
+    def scale_point(
+        self,
+        x: int,
+        y: int,
+        *,
+        base_width: int = 1920,
+        base_height: int = 1080,
+        clamp: bool = True,
+    ) -> tuple[int, int]:
+        """Scale a point from a base coordinate system into the current client area."""
+        if base_width <= 0 or base_height <= 0:
+            return x, y
+        width = self.width
+        height = self.height
+        if width <= 0 or height <= 0:
+            return x, y
+
+        scaled_x = int(round(x * width / base_width))
+        scaled_y = int(round(y * height / base_height))
+        if not clamp:
+            return scaled_x, scaled_y
+
+        scaled_x = max(0, min(width - 1, scaled_x))
+        scaled_y = max(0, min(height - 1, scaled_y))
+        return scaled_x, scaled_y
+
     @property
     def capture(self) -> CaptureMethod:
         """Screen capture instance."""
@@ -107,6 +139,16 @@ class OperationServiceBase:
     def interaction(self) -> Interaction:
         """Input interaction instance."""
         return self._interaction
+
+    @property
+    def gamepad(self) -> Gamepad:
+        """Gamepad backend (may be a no-op backend)."""
+        return self._gamepad
+
+    @property
+    def policy(self) -> GamepadPolicy:
+        """Gamepad policy port (may be a no-op policy)."""
+        return self._policy
 
     def set_template_dir(self, path: str | Path) -> None:
         """Set template image directory."""
@@ -125,6 +167,7 @@ class OperationServiceBase:
             )
         self._capture.close()
         self._interaction.close()
+        self._gamepad.close()
         self._hwnd = 0
         self._template_cache.clear()
 

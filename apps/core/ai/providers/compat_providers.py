@@ -15,13 +15,15 @@ class OpenAICompatibleProvider(OpenAIProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None = None,
+        api_keys: list[str] | None = None,
         base_url: str | None = None,
         models: list[str] | None = None,
         **kwargs,
     ):
         super().__init__(
             api_key=api_key,
+            api_keys=api_keys,
             base_url=base_url or self.DEFAULT_BASE_URL,
             models=models or self.DEFAULT_MODELS,
             **kwargs,
@@ -46,9 +48,15 @@ class XAIProvider(OpenAICompatibleProvider):
         "grok-2-mini",
     ]
 
-    def __init__(self, api_key: str, xai_native_search: bool = False, **kwargs):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        api_keys: list[str] | None = None,
+        xai_native_search: bool = False,
+        **kwargs,
+    ):
         self.xai_native_search = xai_native_search
-        super().__init__(api_key=api_key, **kwargs)
+        super().__init__(api_key=api_key, api_keys=api_keys, **kwargs)
 
     def _build_extra_body(self) -> dict:
         extra = super()._build_extra_body()

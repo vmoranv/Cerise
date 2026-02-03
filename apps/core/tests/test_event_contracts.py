@@ -9,6 +9,26 @@ def test_event_names_unique() -> None:
     assert all(isinstance(name, str) and name for name in names)
 
 
+def test_agent_created_payload() -> None:
+    payload = ev.build_agent_created("agent-1", parent_id="agent-0", name="A")
+    assert payload == {"agent_id": "agent-1", "parent_id": "agent-0", "name": "A"}
+
+
+def test_agent_message_created_payload() -> None:
+    payload = ev.build_agent_message_created("msg-1", "agent-1", "user", "hi")
+    assert payload == {"message_id": "msg-1", "agent_id": "agent-1", "role": "user", "content": "hi"}
+
+
+def test_agent_wakeup_started_payload() -> None:
+    payload = ev.build_agent_wakeup_started("agent-1", 2)
+    assert payload == {"agent_id": "agent-1", "pending_count": 2}
+
+
+def test_agent_wakeup_completed_payload() -> None:
+    payload = ev.build_agent_wakeup_completed("agent-1", "msg-2", 12.5)
+    assert payload == {"agent_id": "agent-1", "message_id": "msg-2", "duration_ms": 12.5}
+
+
 def test_dialogue_user_message_payload() -> None:
     payload = ev.build_dialogue_user_message("session-1", "hello")
     assert payload == {"session_id": "session-1", "content": "hello"}

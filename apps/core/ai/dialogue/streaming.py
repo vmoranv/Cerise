@@ -24,7 +24,7 @@ class StreamChatMixin:
     async def stream_chat(
         self,
         session: Session,
-        user_message: str,
+        user_message: str | list[dict],
         provider: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
@@ -33,6 +33,7 @@ class StreamChatMixin:
         stop: list[str] | None = None,
     ) -> AsyncIterator[str]:
         """Send a message and stream the response."""
+        user_text = self._content_to_text(user_message)
         session.add_user_message(user_message)
 
         provider_name = provider or self.default_provider
@@ -42,7 +43,7 @@ class StreamChatMixin:
 
         messages = await build_context_messages(
             session=session,
-            query=user_message,
+            query=user_text,
             memory_service=self._memory_service,
             memory_recall=self._memory_recall,
         )

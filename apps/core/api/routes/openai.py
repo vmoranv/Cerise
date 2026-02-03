@@ -22,6 +22,26 @@ from ..openai_models import OpenAIChatCompletionsRequest
 router = APIRouter(prefix="/v1")
 
 
+def _content_to_text(content: str | list[dict] | None) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    parts: list[str] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "text":
+            text = item.get("text")
+            if isinstance(text, str) and text:
+                parts.append(text)
+        elif item.get("type") == "image_url":
+            parts.append("[image]")
+        else:
+            parts.append("[content]")
+    return "\n".join(parts).strip()
+
+
 def _estimate_tokens(text: str) -> int:
     # Rough estimate: 4 chars ~= 1 token
     if not text:
@@ -78,6 +98,20 @@ async def list_models() -> dict:
             for item in models_list:
                 if isinstance(item, str) and item:
                     add_model(f"{provider.id}/{item}")
+
+    # Best-effort: include provider-advertised models (may include defaults).
+    try:
+        from ...ai.providers import ProviderRegistry
+
+        for provider_id in ProviderRegistry.list_instances():
+            instance = ProviderRegistry.get(provider_id)
+            if not instance:
+                continue
+            for model_name in instance.available_models:
+                if isinstance(model_name, str) and model_name:
+                    add_model(f"{provider_id}/{model_name}")
+    except Exception:
+        pass
 
     return {"object": "list", "data": models}
 
@@ -192,8 +226,10 @@ async def chat_completions(
     prompt_text_parts: list[str] = []
     if session.system_prompt:
         prompt_text_parts.append(session.system_prompt)
-    prompt_text_parts.extend(msg.content for msg in session.messages)
-    prompt_text_parts.append(user_message)
+    prompt_messages = session.messages
+    if prompt_messages and prompt_messages[-1].role == "assistant":
+        prompt_messages = prompt_messages[:-1]
+    prompt_text_parts.extend(_content_to_text(msg.content) for msg in prompt_messages)
     prompt_tokens = _estimate_tokens("\n".join(prompt_text_parts))
     completion_tokens = _estimate_tokens(content)
 
