@@ -9,6 +9,7 @@ from .routes import (
     emotion_router,
     health_router,
     live2d_router,
+    openai_router,
     sessions_router,
     websocket_router,
 )
@@ -20,3 +21,4 @@ router.include_router(chat_router)
 router.include_router(emotion_router)
 router.include_router(live2d_router)
 router.include_router(websocket_router)
+router.include_router(openai_router)

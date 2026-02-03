@@ -10,7 +10,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     provider: str | None = None
     model: str | None = None
-    temperature: float = 0.7
+    temperature: float | None = None
     stream: bool = False
 
 

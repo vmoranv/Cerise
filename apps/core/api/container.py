@@ -145,6 +145,9 @@ async def build_services() -> AppServices:
     dialogue_engine = DialogueEngine(
         default_provider=app_config.ai.default_provider,
         default_model=app_config.ai.default_model,
+        default_temperature=app_config.ai.temperature,
+        default_top_p=app_config.ai.top_p,
+        default_max_tokens=app_config.ai.max_tokens,
         system_prompt=personality.generate_system_prompt(),
         message_bus=message_bus,
         memory_service=memory_service,

@@ -14,6 +14,9 @@ from .session import Session
 class StreamChatMixin:
     default_provider: str
     default_model: str
+    default_temperature: float
+    default_top_p: float
+    default_max_tokens: int
     _provider_registry: ProviderRegistryProtocol
     _memory_service: MemoryService | None
     _memory_recall: bool
@@ -24,8 +27,10 @@ class StreamChatMixin:
         user_message: str,
         provider: str | None = None,
         model: str | None = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
+        stop: list[str] | None = None,
     ) -> AsyncIterator[str]:
         """Send a message and stream the response."""
         session.add_user_message(user_message)
@@ -42,10 +47,16 @@ class StreamChatMixin:
             memory_recall=self._memory_recall,
         )
 
+        temperature = self.default_temperature if temperature is None else temperature
+        top_p = self.default_top_p if top_p is None else top_p
+        max_tokens = self.default_max_tokens if max_tokens is None else max_tokens
+
         options = ChatOptions(
             model=model or self.default_model,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=top_p,
+            stop=stop,
             stream=True,
         )
 

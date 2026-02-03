@@ -34,6 +34,9 @@ class DialogueEngine(StreamChatMixin):
         message_bus: EventBus,
         default_provider: str = "openai",
         default_model: str = "gpt-4o",
+        default_temperature: float = 0.7,
+        default_top_p: float = 1.0,
+        default_max_tokens: int = 2048,
         system_prompt: str = "",
         memory_service: MemoryService | None = None,
         memory_recall: bool = True,
@@ -42,6 +45,9 @@ class DialogueEngine(StreamChatMixin):
     ):
         self.default_provider = default_provider
         self.default_model = default_model
+        self.default_temperature = default_temperature
+        self.default_top_p = default_top_p
+        self.default_max_tokens = default_max_tokens
         self.default_system_prompt = system_prompt
         self._sessions: dict[str, Session] = {}
         self._message_bus = message_bus
@@ -84,8 +90,10 @@ class DialogueEngine(StreamChatMixin):
         user_message: str,
         provider: str | None = None,
         model: str | None = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
+        stop: list[str] | None = None,
         use_tools: bool = True,
     ) -> str:
         """Send a message and get a response"""
@@ -113,11 +121,17 @@ class DialogueEngine(StreamChatMixin):
             memory_recall=self._memory_recall,
         )
 
+        temperature = self.default_temperature if temperature is None else temperature
+        top_p = self.default_top_p if top_p is None else top_p
+        max_tokens = self.default_max_tokens if max_tokens is None else max_tokens
+
         # Prepare options
         options = ChatOptions(
             model=model or self.default_model,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=top_p,
+            stop=stop,
             tools=self._ability_registry.get_tool_schemas() if use_tools else None,
         )
 

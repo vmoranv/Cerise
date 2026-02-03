@@ -21,6 +21,7 @@ class AIConfig(BaseModel):
     default_provider: str = "openai"
     default_model: str = "gpt-4o"
     temperature: float = 0.7
+    top_p: float = 1.0
     max_tokens: int = 2048
 
 
