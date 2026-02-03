@@ -1,5 +1,5 @@
 """
-Rerank providers adapted from AstrBot.
+Rerank providers.
 """
 
 from __future__ import annotations

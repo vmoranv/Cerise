@@ -3,6 +3,7 @@ Provider registry configuration helpers.
 """
 
 import contextlib
+import inspect
 import logging
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,83 @@ if TYPE_CHECKING:
     from ...config import ProviderConfig, ProvidersConfig
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_alias(kwargs: dict, *, src: str, dest: str) -> None:
+    if src not in kwargs or dest in kwargs:
+        return
+    kwargs[dest] = kwargs.pop(src)
+
+
+def _normalize_provider_kwargs(provider_type: str, kwargs: dict) -> dict:
+    """Normalize provider config keys from common external templates.
+
+    This keeps Cerise config compatible with common community config field
+    names without requiring exact key matches.
+
+    Note: We still validate required fields by letting provider constructors
+    raise if a required argument is missing.
+    """
+
+    normalized = dict(kwargs)
+
+    # Common aliases used by other projects/templates.
+    _apply_alias(normalized, src="api_base", dest="base_url")
+    _apply_alias(normalized, src="api_base_url", dest="base_url")
+    _apply_alias(normalized, src="custom_extra_body", dest="extra_body")
+
+    # Embedding provider aliases (common).
+    _apply_alias(normalized, src="embedding_api_key", dest="api_key")
+    _apply_alias(normalized, src="embedding_api_base", dest="base_url")
+    _apply_alias(normalized, src="embedding_model", dest="model")
+
+    # Rerank provider aliases (common).
+    _apply_alias(normalized, src="rerank_api_key", dest="api_key")
+    _apply_alias(normalized, src="rerank_api_base", dest="base_url")
+    _apply_alias(normalized, src="rerank_model", dest="model")
+
+    timeout = normalized.get("timeout")
+    if isinstance(timeout, str):
+        with contextlib.suppress(ValueError, TypeError):
+            normalized["timeout"] = float(timeout)
+
+    if provider_type == "openai":
+        organization = normalized.get("organization")
+        if organization is None:
+            _apply_alias(normalized, src="org", dest="organization")
+
+    return normalized
+
+
+def _filter_kwargs_for_provider(
+    provider_id: str, provider_type: str, provider_class: type[BaseProvider], kwargs: dict
+) -> dict:
+    """Drop unexpected kwargs to avoid hard failures on extra config keys."""
+
+    signature = inspect.signature(provider_class.__init__)
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
+        return kwargs
+
+    allowed: set[str] = set()
+    for name, param in signature.parameters.items():
+        if name == "self":
+            continue
+        if param.kind in {
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        }:
+            allowed.add(name)
+
+    unknown = sorted(key for key in kwargs if key not in allowed)
+    if unknown:
+        logger.warning(
+            "Ignoring unknown config keys for provider %s (type=%s): %s",
+            provider_id,
+            provider_type,
+            ", ".join(unknown),
+        )
+
+    return {key: value for key, value in kwargs.items() if key in allowed}
 
 
 class ProviderRegistryConfigMixin:
@@ -130,7 +208,8 @@ class ProviderRegistryConfigMixin:
             raise ValueError(f"Unknown provider type: {provider_type}")
 
         provider_class = cls._provider_types[provider_type]
-        kwargs = config.config.copy()
+        kwargs = _normalize_provider_kwargs(provider_type, config.config.copy())
+        kwargs = _filter_kwargs_for_provider(config.id, provider_type, provider_class, kwargs)
 
         instance = provider_class(**kwargs)
         cls._instances[config.id] = instance

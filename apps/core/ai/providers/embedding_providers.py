@@ -1,5 +1,5 @@
 """
-Embedding providers adapted from AstrBot.
+Embedding providers.
 """
 
 from __future__ import annotations

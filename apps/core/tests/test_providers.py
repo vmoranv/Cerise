@@ -2,7 +2,9 @@
 
 import pytest
 from apps.core.ai.providers.base import BaseProvider
+from apps.core.ai.providers.openai_provider import OpenAIProvider
 from apps.core.ai.providers.registry import ProviderRegistry
+from apps.core.config.schemas import ProviderConfig
 
 
 class TestProviderRegistry:
@@ -97,6 +99,26 @@ class TestProviderRegistry:
 
         assert len(ProviderRegistry._instances) == 0
         assert ProviderRegistry._initialized is False
+
+    def test_create_from_config_supports_common_aliases_and_ignores_unknown_keys(self):
+        """Provider config should accept alias keys and ignore extras."""
+        ProviderRegistry._register_builtin_providers()
+
+        config = ProviderConfig(
+            id="test-openai",
+            type="openai",
+            config={
+                "api_key": "test-key",
+                "api_base": "http://example.local/v1",
+                "custom_extra_body": {"foo": "bar"},
+                "unknown_key": "ignored",
+            },
+        )
+
+        instance = ProviderRegistry._create_from_config(config)
+        assert isinstance(instance, OpenAIProvider)
+        assert instance.base_url == "http://example.local/v1"
+        assert instance.extra_body == {"foo": "bar"}
 
 
 class TestProviderRegistryAsync:
