@@ -1,7 +1,13 @@
-"""
-输入模拟协议接口
+"""Interaction protocol interface.
 
-定义统一的输入模拟接口，支持多种输入后端实现。
+This module defines the shared protocol only.
+
+Concrete implementations live in:
+- `apps/core/operation/input/win32.py` (PostMessage/SendMessage)
+- `apps/core/operation/input/win32_sendinput.py` (foreground SendInput)
+- `apps/core/operation/input/null.py` (no-op)
+
+See `apps/core/operation/input/factory.py` for unified backend selection.
 """
 
 from __future__ import annotations
@@ -25,7 +31,7 @@ class Interaction(Protocol):
     @property
     def hwnd(self) -> int:
         """当前绑定的窗口句柄"""
-        ...
+        pass
 
     def connect(self, hwnd: int) -> bool:
         """连接到目标窗口
@@ -36,11 +42,11 @@ class Interaction(Protocol):
         Returns:
             连接是否成功
         """
-        ...
+        pass
 
     def connected(self) -> bool:
         """检查是否已连接到窗口"""
-        ...
+        pass
 
     # ========== 鼠标操作 ==========
 
@@ -51,7 +57,7 @@ class Interaction(Protocol):
             x: 目标 x 坐标（相对于窗口客户区）
             y: 目标 y 坐标（相对于窗口客户区）
         """
-        ...
+        pass
 
     def click(
         self,
@@ -66,7 +72,7 @@ class Interaction(Protocol):
             y: 点击位置 y 坐标，None 表示当前位置
             button: 鼠标按键 ('left', 'right', 'middle')
         """
-        ...
+        pass
 
     def double_click(
         self,
@@ -75,7 +81,7 @@ class Interaction(Protocol):
         button: str = "left",
     ) -> None:
         """双击鼠标"""
-        ...
+        pass
 
     def click_box(
         self,
@@ -92,15 +98,15 @@ class Interaction(Protocol):
             relative_x: 相对于 Box 宽度的点击位置 (0.0-1.0)
             relative_y: 相对于 Box 高度的点击位置 (0.0-1.0)
         """
-        ...
+        pass
 
     def mouse_down(self, x: int | None = None, y: int | None = None, button: str = "left") -> None:
         """按下鼠标按键"""
-        ...
+        pass
 
     def mouse_up(self, x: int | None = None, y: int | None = None, button: str = "left") -> None:
         """释放鼠标按键"""
-        ...
+        pass
 
     def scroll(self, x: int, y: int, delta: int) -> None:
         """滚动鼠标滚轮
@@ -110,7 +116,7 @@ class Interaction(Protocol):
             y: 滚动位置 y 坐标
             delta: 滚动量（正值向上，负值向下）
         """
-        ...
+        pass
 
     def drag(
         self,
@@ -131,7 +137,7 @@ class Interaction(Protocol):
             button: 鼠标按键
             duration: 拖拽持续时间（秒）
         """
-        ...
+        pass
 
     # ========== 键盘操作 ==========
 
@@ -141,11 +147,11 @@ class Interaction(Protocol):
         Args:
             key: 按键名称（如 'a', 'enter', 'ctrl'）
         """
-        ...
+        pass
 
     def key_up(self, key: str) -> None:
         """释放键盘按键"""
-        ...
+        pass
 
     def key_press(self, key: str, duration: float = 0.0) -> None:
         """按下并释放按键
@@ -154,7 +160,7 @@ class Interaction(Protocol):
             key: 按键名称
             duration: 按住时间（秒）
         """
-        ...
+        pass
 
     def type_text(self, text: str, interval: float = 0.0) -> None:
         """输入文本
@@ -163,7 +169,7 @@ class Interaction(Protocol):
             text: 要输入的文本
             interval: 按键间隔（秒）
         """
-        ...
+        pass
 
     def hotkey(self, *keys: str) -> None:
         """执行组合键
@@ -171,8 +177,8 @@ class Interaction(Protocol):
         Args:
             keys: 按键序列（如 'ctrl', 'c'）
         """
-        ...
+        pass
 
     def close(self) -> None:
         """释放资源"""
-        ...
+        pass

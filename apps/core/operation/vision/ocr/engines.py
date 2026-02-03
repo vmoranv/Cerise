@@ -9,6 +9,8 @@ OCR 引擎实现
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 
 from ..box import Box
@@ -194,5 +196,146 @@ class TesseractOCREngine(BaseOCR):
                     confidence=conf / 100.0,
                 )
             )
+
+        return results
+
+
+class WinRTOCREngine(BaseOCR):
+    """WinRT OCR 引擎（Windows.Media.Ocr）
+
+    使用 Windows 内置 OCR（不依赖额外 pip OCR 包）。
+    仅在 Windows 上可用。
+    """
+
+    def __init__(
+        self,
+        language_tag: str | None = None,
+        preprocessor: OCRPreprocessor | None = None,
+    ) -> None:
+        super().__init__(preprocessor)
+        self.language_tag = language_tag
+        self._engine = None
+        self._max_image_dimension: int | None = None
+
+    def _get_engine(self):
+        if self._engine is not None:
+            return self._engine
+
+        if sys.platform != "win32":
+            raise ImportError("WinRT OCR is only available on Windows")
+
+        from ..winrt.Windows.Globalization import Language
+        from ..winrt.Windows.Media.Ocr import OcrEngine
+
+        if self.language_tag:
+            lang = Language.CreateLanguage(self.language_tag)
+            if not OcrEngine.IsLanguageSupported(lang):
+                raise ImportError(f"WinRT OCR language not supported: {self.language_tag}")
+            engine = OcrEngine.TryCreateFromLanguage(lang)
+        else:
+            engine = OcrEngine.TryCreateFromUserProfileLanguages()
+
+        if getattr(engine, "value", None) is None:
+            raise ImportError("WinRT OCR not available (TryCreate returned null)")
+
+        self._engine = engine
+        self._max_image_dimension = int(OcrEngine.MaxImageDimension)
+        return engine
+
+    def _create_software_bitmap(self, rgba: np.ndarray):
+        from ctypes import c_ubyte, c_void_p, cast
+
+        from ..winrt.Windows.Graphics.Imaging import BitmapAlphaMode, BitmapPixelFormat, SoftwareBitmap
+        from ..winrt.Windows.Security.Cryptography import CryptographicBuffer
+
+        if rgba.dtype != np.uint8:
+            rgba = np.clip(rgba, 0, 255).astype(np.uint8)
+        rgba = np.ascontiguousarray(rgba)
+        height, width = rgba.shape[:2]
+        raw = rgba.tobytes()
+
+        arr = (c_ubyte * len(raw)).from_buffer_copy(raw)
+        buffer = CryptographicBuffer.CreateFromByteArray(len(raw), cast(arr, c_void_p))
+        return SoftwareBitmap.CreateCopyWithAlphaFromBuffer(
+            buffer,
+            BitmapPixelFormat.Rgba8,
+            width,
+            height,
+            BitmapAlphaMode.Straight,
+        )
+
+    @staticmethod
+    def _to_rgba(image: np.ndarray) -> np.ndarray:
+        if image.dtype != np.uint8:
+            image = np.clip(image, 0, 255).astype(np.uint8)
+
+        if image.ndim == 2:
+            alpha = np.full((*image.shape, 1), 255, dtype=np.uint8)
+            rgb = np.stack([image, image, image], axis=-1)
+            return np.ascontiguousarray(np.concatenate([rgb, alpha], axis=-1))
+
+        if image.ndim == 3 and image.shape[2] == 3:
+            rgb = image[..., ::-1]
+            alpha = np.full((image.shape[0], image.shape[1], 1), 255, dtype=np.uint8)
+            return np.ascontiguousarray(np.concatenate([rgb, alpha], axis=-1))
+
+        if image.ndim == 3 and image.shape[2] == 4:
+            return np.ascontiguousarray(image[..., [2, 1, 0, 3]])
+
+        raise ValueError(f"Unsupported image shape for WinRT OCR: {image.shape}")
+
+    def _recognize_impl(self, image: np.ndarray) -> list[OCRResult]:
+        engine = self._get_engine()
+
+        from ..winrt.Windows.Media.Ocr import OcrEngine
+
+        max_dim = self._max_image_dimension or int(OcrEngine.MaxImageDimension)
+        orig_h, orig_w = image.shape[:2]
+        work = image
+        scale_x = 1.0
+        scale_y = 1.0
+
+        if max(orig_w, orig_h) > max_dim:
+            try:
+                import cv2
+            except ImportError as exc:
+                raise ImportError("opencv-python is required to resize images for WinRT OCR") from exc
+
+            scale = float(max_dim) / float(max(orig_w, orig_h))
+            new_w = max(1, int(round(orig_w * scale)))
+            new_h = max(1, int(round(orig_h * scale)))
+            work = cv2.resize(work, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            scale_x = orig_w / float(new_w)
+            scale_y = orig_h / float(new_h)
+
+        rgba = self._to_rgba(work)
+        software_bitmap = self._create_software_bitmap(rgba)
+
+        try:
+            ocr_result = engine.RecognizeAsync(software_bitmap).wait()
+        finally:
+            try:
+                software_bitmap.Close()
+            except Exception:
+                pass
+
+        results: list[OCRResult] = []
+
+        for line in ocr_result.Lines:
+            for word in line.Words:
+                rect = word.BoundingRect
+                text = str(word.Text)
+                if not text:
+                    continue
+
+                box = Box(
+                    x=rect.x * scale_x,
+                    y=rect.y * scale_y,
+                    width=rect.width * scale_x,
+                    height=rect.height * scale_y,
+                    confidence=1.0,
+                    name=text,
+                )
+                results.append(OCRResult(text=text, box=box, confidence=1.0))
 
         return results

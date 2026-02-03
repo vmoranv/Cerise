@@ -27,7 +27,8 @@ class GamepadPolicy(Protocol):
         *,
         frame: np.ndarray | None = None,
         meta: dict[str, Any] | None = None,
-    ) -> GamepadState: ...
+    ) -> GamepadState:
+        pass
 
 
 class NullGamepadPolicy:

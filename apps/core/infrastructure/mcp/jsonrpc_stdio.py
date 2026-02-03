@@ -170,6 +170,10 @@ class JsonRpcStdioClient:
             while not self._stop.is_set():
                 msg = self._read_message_sync(self._proc.stdout)
                 if msg is None:
+                    self._loop.call_soon_threadsafe(
+                        self._fail_all,
+                        JsonRpcClosedError("JSON-RPC stdout closed"),
+                    )
                     return
                 self._loop.call_soon_threadsafe(self._handle_message, msg)
         except Exception:

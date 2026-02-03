@@ -22,17 +22,23 @@ class GamepadState:
 class Gamepad(Protocol):
     """Gamepad backend protocol."""
 
-    def connect(self) -> bool: ...
+    def connect(self) -> bool:
+        pass
 
-    def connected(self) -> bool: ...
+    def connected(self) -> bool:
+        pass
 
-    def set_button(self, button: str, pressed: bool) -> None: ...
+    def set_button(self, button: str, pressed: bool) -> None:
+        pass
 
-    def set_axis(self, axis: str, value: float) -> None: ...
+    def set_axis(self, axis: str, value: float) -> None:
+        pass
 
-    def set_state(self, state: GamepadState) -> None: ...
+    def set_state(self, state: GamepadState) -> None:
+        pass
 
-    def close(self) -> None: ...
+    def close(self) -> None:
+        pass
 
 
 class NullGamepad:

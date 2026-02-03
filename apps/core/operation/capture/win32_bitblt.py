@@ -85,13 +85,12 @@ class Win32BitBltCapture:
     适用于大多数普通应用程序。
 
     Example:
-        >>> capture = Win32BitBltCapture()
-        >>> capture.connect(hwnd)
-        >>> frame = capture.get_frame()
-        >>> if frame is not None:
-        ...     # 处理 BGR 图像
-        ...     pass
-        >>> capture.close()
+        capture = Win32BitBltCapture()
+        capture.connect(hwnd)
+        frame = capture.get_frame()
+        if frame is not None:
+            _ = frame.shape
+        capture.close()
     """
 
     def __init__(self, use_print_window: bool = False) -> None:

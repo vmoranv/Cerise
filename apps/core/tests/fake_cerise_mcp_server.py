@@ -5,9 +5,22 @@ Runs the real `McpStdioAbilityServer` and registers a single demo ability.
 
 from __future__ import annotations
 
-from apps.core.abilities.base import AbilityCategory, AbilityContext, AbilityResult, AbilityType, BaseAbility
-from apps.core.abilities.mcp_server import McpStdioAbilityServer
-from apps.core.abilities.registry import AbilityRegistry
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from apps.core.abilities.base import (  # noqa: E402
+    AbilityCategory,
+    AbilityContext,
+    AbilityResult,
+    AbilityType,
+    BaseAbility,
+)
+from apps.core.abilities.mcp_server import McpStdioAbilityServer  # noqa: E402
+from apps.core.abilities.registry import AbilityRegistry  # noqa: E402
 
 
 class EchoAbility(BaseAbility):

@@ -23,13 +23,13 @@ from .matching import (
 )
 from .ocr import (
     BaseOCR,
-    OCREngine,
     OCRPreprocessor,
     OCRResult,
     OCRService,
     PaddleOCREngine,
     RapidOCREngine,
     TesseractOCREngine,
+    WinRTOCREngine,
 )
 from .preprocessing import (
     adaptive_threshold,
@@ -79,13 +79,13 @@ __all__ = [
     "detect_text_regions",
     # OCR
     "OCRResult",
-    "OCREngine",
     "OCRPreprocessor",
     "BaseOCR",
     "OCRService",
     "PaddleOCREngine",
     "RapidOCREngine",
     "TesseractOCREngine",
+    "WinRTOCREngine",
     # Template matching
     "find_color",
     "load_template",

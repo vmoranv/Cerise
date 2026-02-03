@@ -38,6 +38,17 @@ from .constants import (
     WM_RBUTTONDOWN,
     WM_RBUTTONUP,
 )
+from .factory import (
+    GamepadBackend,
+    InteractionBackend,
+    PolicyBackend,
+    available_gamepad_backends,
+    available_interaction_backends,
+    available_policy_backends,
+    create_gamepad,
+    create_interaction,
+    create_policy,
+)
 from .gamepad import Gamepad, GamepadState, NullGamepad
 from .keymap import (
     KeyBinding,
@@ -45,8 +56,12 @@ from .keymap import (
     create_arrow_preset,
     create_wasd_preset,
 )
+from .null import NullInteraction
 from .policy import GamepadPolicy, NullGamepadPolicy
+from .policy_callable import CallableGamepadPolicy
+from .policy_http import HttpGamepadPolicy
 from .win32 import Win32Interaction
+from .win32_sendinput import Win32SendInputInteraction
 
 __all__ = [
     # Protocol
@@ -55,10 +70,25 @@ __all__ = [
     "GamepadPolicy",
     # Win32 Implementation
     "Win32Interaction",
+    "Win32SendInputInteraction",
+    "NullInteraction",
     "NullGamepad",
     "NullGamepadPolicy",
+    # Policies
+    "CallableGamepadPolicy",
+    "HttpGamepadPolicy",
     # Gamepad state
     "GamepadState",
+    # Factories
+    "InteractionBackend",
+    "GamepadBackend",
+    "PolicyBackend",
+    "available_interaction_backends",
+    "available_gamepad_backends",
+    "available_policy_backends",
+    "create_interaction",
+    "create_gamepad",
+    "create_policy",
     # KeyMap
     "KeyBinding",
     "KeyMap",

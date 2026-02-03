@@ -14,11 +14,11 @@ from apps.core.contracts.events import (
 from apps.core.infrastructure import Event, EventBus
 
 from .capture.base import CaptureMethod
-from .capture.win32_bitblt import Win32BitBltCapture
+from .capture.factory import create_capture
 from .input.base import Interaction
-from .input.gamepad import Gamepad, NullGamepad
-from .input.policy import GamepadPolicy, NullGamepadPolicy
-from .input.win32 import Win32Interaction
+from .input.factory import create_gamepad, create_interaction, create_policy
+from .input.gamepad import Gamepad
+from .input.policy import GamepadPolicy
 from .vision.box import Box
 
 if TYPE_CHECKING:
@@ -39,10 +39,10 @@ class OperationServiceBase:
         policy: GamepadPolicy | None = None,
         bus: EventBus | None = None,
     ) -> None:
-        self._capture = capture or Win32BitBltCapture()
-        self._interaction = interaction or Win32Interaction()
-        self._gamepad = gamepad or NullGamepad()
-        self._policy = policy or NullGamepadPolicy()
+        self._capture = capture or create_capture("auto")
+        self._interaction = interaction or create_interaction("postmessage")
+        self._gamepad = gamepad or create_gamepad("null")
+        self._policy = policy or create_policy("null")
         self._bus = bus
         self._hwnd: int = 0
         self._template_cache: dict[str, np.ndarray] = {}

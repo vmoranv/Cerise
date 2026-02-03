@@ -4,7 +4,7 @@ OCR 基类
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import numpy as np
 
@@ -18,11 +18,64 @@ class BaseOCR(ABC):
 
     def __init__(self, preprocessor: OCRPreprocessor | None = None) -> None:
         self.preprocessor = preprocessor or OCRPreprocessor()
+        self._delegate: BaseOCR | None = None
 
-    @abstractmethod
     def _recognize_impl(self, image: np.ndarray) -> list[OCRResult]:
-        """实际识别实现"""
-        ...
+        """实际识别实现（默认：自动选择可用 OCR 引擎并委托调用）"""
+        delegate = self._get_or_create_delegate()
+        return delegate._recognize_impl(image)
+
+    def _get_or_create_delegate(self) -> BaseOCR:
+        if self._delegate is not None:
+            return self._delegate
+
+        from .engines import PaddleOCREngine, RapidOCREngine, TesseractOCREngine, WinRTOCREngine
+
+        errors: list[str] = []
+
+        try:
+            engine = RapidOCREngine(preprocessor=self.preprocessor)
+            engine._get_ocr()
+            self._delegate = engine
+            return engine
+        except ImportError as exc:
+            errors.append(str(exc))
+
+        try:
+            engine = PaddleOCREngine(lang="ch", use_gpu=False, preprocessor=self.preprocessor)
+            engine._get_ocr()
+            self._delegate = engine
+            return engine
+        except ImportError as exc:
+            errors.append(str(exc))
+
+        try:
+            engine = WinRTOCREngine(preprocessor=self.preprocessor)
+            engine._get_engine()
+            self._delegate = engine
+            return engine
+        except ImportError as exc:
+            errors.append(str(exc))
+
+        try:
+            import pytesseract  # noqa: F401
+
+            engine = TesseractOCREngine(lang="eng+chi_sim", preprocessor=self.preprocessor)
+            self._delegate = engine
+            return engine
+        except ImportError as exc:
+            errors.append(str(exc))
+
+        detail = "\n".join(f"  - {err}" for err in errors if err)
+        msg = (
+            "No OCR engine available. Install one of:\n"
+            "  - pip install rapidocr-onnxruntime  (recommended)\n"
+            "  - pip install paddlepaddle paddleocr\n"
+            "  - pip install pytesseract\n"
+        )
+        if detail:
+            msg = f"{msg}\nImport errors:\n{detail}\n"
+        raise ImportError(msg)
 
     def recognize(self, image: np.ndarray) -> list[OCRResult]:
         """识别图像中的文字"""

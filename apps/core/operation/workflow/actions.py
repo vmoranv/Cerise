@@ -28,7 +28,8 @@ class Action(ABC):
         self.result: ActionResult | None = None
 
     @abstractmethod
-    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult: ...
+    def execute(self, service: OperationService, cancel_token: CancelToken | None = None) -> ActionResult:
+        pass
 
     def reset(self) -> None:
         self.status = ActionStatus.PENDING

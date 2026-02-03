@@ -1,7 +1,14 @@
-"""
-屏幕捕获协议接口
+"""Capture protocol interface.
 
-定义统一的屏幕捕获接口，支持多种捕获后端实现。
+This module defines the shared protocol only.
+
+Concrete implementations live in:
+- `apps/core/operation/capture/win32_bitblt.py`
+- `apps/core/operation/capture/win32_printwindow.py`
+- `apps/core/operation/capture/image.py`
+- `apps/core/operation/capture/fallback.py`
+
+See `apps/core/operation/capture/factory.py` for unified backend selection.
 """
 
 from __future__ import annotations
@@ -26,17 +33,17 @@ class CaptureMethod(Protocol):
     @property
     def width(self) -> int:
         """捕获区域宽度"""
-        ...
+        pass
 
     @property
     def height(self) -> int:
         """捕获区域高度"""
-        ...
+        pass
 
     @property
     def hwnd(self) -> int:
         """当前绑定的窗口句柄"""
-        ...
+        pass
 
     def connect(self, hwnd: int) -> bool:
         """连接到目标窗口
@@ -47,11 +54,11 @@ class CaptureMethod(Protocol):
         Returns:
             连接是否成功
         """
-        ...
+        pass
 
     def connected(self) -> bool:
         """检查是否已连接到窗口"""
-        ...
+        pass
 
     def get_frame(self) -> np.ndarray | None:
         """获取当前帧
@@ -59,8 +66,8 @@ class CaptureMethod(Protocol):
         Returns:
             BGR 格式的图像数组，失败返回 None
         """
-        ...
+        pass
 
     def close(self) -> None:
         """释放资源"""
-        ...
+        pass
