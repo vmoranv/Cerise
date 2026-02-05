@@ -8,7 +8,7 @@ import logging
 import shutil
 import zipfile
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import httpx
 
@@ -105,20 +105,20 @@ class InstallMixin:
                     return None
 
                 manifest_data = json.loads(zf.read(manifest_path))
-                plugin_name = manifest_data.get("name", "").replace("/", "-")
+                raw_name = str(manifest_data.get("name", "") or "").strip()
+                plugin_name = raw_name.replace("/", "-").replace("\\", "-")
                 plugin_version = manifest_data.get("version", "0.0.0")
 
                 if not plugin_name:
                     logger.error("Plugin name not found in manifest")
                     return None
+                if plugin_name in {".", ".."} or ":" in plugin_name:
+                    logger.error("Unsafe plugin name in manifest: %s", raw_name)
+                    return None
 
-                target_dir = self.plugins_dir / plugin_name
-                if target_dir.exists():
-                    logger.warning("Removing existing plugin: %s", plugin_name)
-                    shutil.rmtree(target_dir)
-
-                target_dir.mkdir(parents=True, exist_ok=True)
-
+                # Preflight ZipSlip checks before touching the filesystem. In sandboxed
+                # environments, best-effort cleanup can be unreliable, so we avoid
+                # creating the plugin directory when the zip is unsafe.
                 for name in zf.namelist():
                     if plugin_root and not name.startswith(plugin_root + "/"):
                         continue
@@ -133,11 +133,53 @@ class InstallMixin:
                     if not rel_path:
                         continue
 
-                    dest = target_dir / rel_path
-                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    rel = PurePosixPath(rel_path)
+                    if rel.is_absolute() or ".." in rel.parts:
+                        logger.error("Unsafe path in plugin zip: %s", rel_path)
+                        return None
+                    if rel.parts and ":" in rel.parts[0]:
+                        logger.error("Unsafe path in plugin zip: %s", rel_path)
+                        return None
 
-                    with zf.open(name) as src, open(dest, "wb") as dst:
-                        dst.write(src.read())
+                target_dir = self.plugins_dir / plugin_name
+                if target_dir.exists():
+                    logger.warning("Removing existing plugin: %s", plugin_name)
+                    shutil.rmtree(target_dir)
+
+                target_dir.mkdir(parents=True, exist_ok=True)
+                target_root = target_dir.resolve()
+
+                try:
+                    for name in zf.namelist():
+                        if plugin_root and not name.startswith(plugin_root + "/"):
+                            continue
+                        if name.endswith("/"):
+                            continue
+
+                        if plugin_root:
+                            rel_path = name[len(plugin_root) + 1 :]
+                        else:
+                            rel_path = name
+
+                        if not rel_path:
+                            continue
+
+                        rel = PurePosixPath(rel_path)
+                        if rel.is_absolute() or ".." in rel.parts:
+                            raise ValueError(f"Unsafe path in plugin zip: {rel_path}")
+                        if rel.parts and ":" in rel.parts[0]:
+                            raise ValueError(f"Unsafe path in plugin zip: {rel_path}")
+
+                        dest = (target_dir / Path(*rel.parts)).resolve()
+                        if not dest.is_relative_to(target_root):
+                            raise ValueError(f"Unsafe path in plugin zip: {rel_path}")
+
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(name) as src, open(dest, "wb") as dst:
+                            dst.write(src.read())
+                except Exception:
+                    shutil.rmtree(target_dir, ignore_errors=True)
+                    raise
 
                 logger.info("Installed plugin: %s v%s", plugin_name, plugin_version)
 

@@ -31,6 +31,12 @@ class PluginConfigUpdate(BaseModel):
     config: dict | None = None
 
 
+class AbilityExecuteRequest(BaseModel):
+    params: dict = {}
+    user_id: str | None = None
+    session_id: str | None = None
+
+
 class StarEntryUpdate(BaseModel):
     enabled: bool | None = None
     allow_tools: bool | None = None

@@ -14,6 +14,12 @@ plugins:
   enabled: true
   auto_start: true
   plugins_dir: ""  # 空 = 使用默认 ~/.cerise/plugins
+  auto_install_dependencies: false
+  python_venv_dir: ".venv"
+
+tools:
+  permissions: []     # Tool calling permissions (e.g. ["system.execute"])
+  max_result_chars: 4000
 
 tts:
   enabled: false

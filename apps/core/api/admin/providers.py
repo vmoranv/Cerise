@@ -9,6 +9,38 @@ from .models import ProviderCreateRequest
 
 router = APIRouter()
 
+_SECRET_KEYS = {
+    "api_key",
+    "api_keys",
+    "key",
+    "token",
+    "access_token",
+    "refresh_token",
+    "secret",
+    "password",
+}
+
+
+def _redact_value(value):
+    if isinstance(value, dict):
+        return {k: _redact_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_value(v) for v in value]
+    return value
+
+
+def _redact_config(config: dict) -> dict:
+    redacted: dict = {}
+    for k, v in config.items():
+        if k.lower() in _SECRET_KEYS:
+            if isinstance(v, list):
+                redacted[k] = ["***" for _ in v]
+            else:
+                redacted[k] = "***"
+        else:
+            redacted[k] = _redact_value(v)
+    return redacted
+
 
 @router.get("/providers")
 async def list_providers(include: str | None = None) -> dict:
@@ -18,6 +50,12 @@ async def list_providers(include: str | None = None) -> dict:
     providers = [p.model_dump() for p in config.providers]
 
     include_set = {item.strip().lower() for item in include.split(",") if item.strip()} if include else set()
+    if "secrets" not in include_set:
+        for provider in providers:
+            cfg = provider.get("config")
+            if isinstance(cfg, dict):
+                provider["config"] = _redact_config(cfg)
+
     if include_set & {"models", "capabilities"}:
         from ...ai.providers import ProviderRegistry
 
@@ -68,7 +106,11 @@ async def add_provider(request: ProviderCreateRequest) -> dict:
     )
 
     loader.add_provider(provider)
-    return {"status": "added", "provider": provider.model_dump()}
+    dumped = provider.model_dump()
+    cfg = dumped.get("config")
+    if isinstance(cfg, dict):
+        dumped["config"] = _redact_config(cfg)
+    return {"status": "added", "provider": dumped}
 
 
 @router.put("/providers/{provider_id}")

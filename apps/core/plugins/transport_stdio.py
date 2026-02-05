@@ -71,8 +71,8 @@ class StdioTransport(BaseTransport):
                 await asyncio.wait_for(self._process.wait(), timeout=5.0)
             except TimeoutError:
                 self._process.kill()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to stop plugin process (%s): %s", self.command, exc)
 
         self._process = None
         logger.info("Plugin process stopped")

@@ -18,23 +18,30 @@ class PluginBridge:
 
     def __init__(self, plugin_manager: PluginManager):
         self.manager = plugin_manager
-        self._registered = False
+        self._registered_names: set[str] = set()
 
     async def register_plugin_abilities(self) -> None:
-        """Register all plugin abilities to AbilityRegistry"""
+        """Sync plugin abilities into AbilityRegistry."""
         abilities = self.manager.list_abilities()
+        current: set[str] = set()
 
         for ability_info in abilities:
             ability_name = ability_info.get("name")
             if not ability_name:
                 continue
+            current.add(ability_name)
 
             # Create a proxy ability that calls the plugin
             proxy = self._create_proxy_ability(ability_info)
             AbilityRegistry.register(proxy)
 
-        self._registered = True
-        logger.info(f"Registered {len(abilities)} plugin abilities")
+        removed = 0
+        for stale in self._registered_names - current:
+            if AbilityRegistry.unregister(stale):
+                removed += 1
+
+        self._registered_names = current
+        logger.info("Synced plugin abilities: registered=%s removed=%s", len(current), removed)
 
     def _create_proxy_ability(self, ability_info: dict) -> "PluginProxyAbility":
         """Create a proxy ability for a plugin ability"""

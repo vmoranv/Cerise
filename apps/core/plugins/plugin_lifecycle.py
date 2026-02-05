@@ -5,13 +5,35 @@ Plugin lifecycle helpers.
 import asyncio
 import json
 import logging
+import sys
 from pathlib import Path
 
+from .name_safety import validate_plugin_name
 from .plugin_types import LoadedPlugin, PluginManifest, normalize_abilities
 from .protocol import JsonRpcRequest, Methods
 from .transport import BaseTransport, HttpTransport, StdioTransport
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_abilities(init_result: dict, *, manifest: PluginManifest) -> list[dict]:
+    """Extract abilities from plugin initialize() response, with fallbacks."""
+
+    if not isinstance(init_result, dict):
+        return normalize_abilities(manifest.abilities)
+
+    for key in ("abilities", "skills", "tools"):
+        abilities = init_result.get(key)
+        if abilities:
+            return normalize_abilities(abilities)
+
+    mcp_block = init_result.get("mcp")
+    if isinstance(mcp_block, dict):
+        mcp_tools = mcp_block.get("tools")
+        if mcp_tools:
+            return normalize_abilities(mcp_tools)
+
+    return normalize_abilities(manifest.abilities)
 
 
 class LifecycleMixin:
@@ -21,6 +43,12 @@ class LifecycleMixin:
 
     async def load(self, plugin_name: str, config: dict | None = None) -> bool:
         """Load and start a plugin."""
+        try:
+            plugin_name = validate_plugin_name(plugin_name)
+        except ValueError:
+            logger.warning("Invalid plugin name: %r", plugin_name)
+            return False
+
         plugin_dir = self.plugins_dir / plugin_name
         manifest_path = plugin_dir / "manifest.json"
 
@@ -58,18 +86,7 @@ class LifecycleMixin:
             await transport.disconnect()
             return False
 
-        abilities = response.result.get("abilities")
-        if not abilities:
-            abilities = response.result.get("skills")
-        if not abilities:
-            abilities = response.result.get("tools")
-        if not abilities:
-            mcp_block = response.result.get("mcp")
-            if isinstance(mcp_block, dict):
-                abilities = mcp_block.get("tools")
-        if not abilities:
-            abilities = manifest.abilities
-        abilities = normalize_abilities(abilities)
+        abilities = _extract_abilities(response.result, manifest=manifest)
 
         plugin = LoadedPlugin(
             manifest=manifest,
@@ -91,6 +108,12 @@ class LifecycleMixin:
 
     async def unload(self, plugin_name: str) -> bool:
         """Stop and unload a plugin."""
+        try:
+            plugin_name = validate_plugin_name(plugin_name)
+        except ValueError:
+            logger.warning("Invalid plugin name: %r", plugin_name)
+            return False
+
         if plugin_name not in self._plugins:
             return False
 
@@ -102,8 +125,8 @@ class LifecycleMixin:
                 plugin.transport.send(shutdown_request),
                 timeout=5.0,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Plugin shutdown failed for %s: %s", plugin_name, exc)
 
         await plugin.transport.disconnect()
 
@@ -118,6 +141,12 @@ class LifecycleMixin:
 
     async def reload(self, plugin_name: str) -> bool:
         """Reload a plugin."""
+        try:
+            plugin_name = validate_plugin_name(plugin_name)
+        except ValueError:
+            logger.warning("Invalid plugin name: %r", plugin_name)
+            return False
+
         config = None
         if plugin_name in self._plugins:
             config = self._plugins[plugin_name].config
@@ -144,18 +173,37 @@ class LifecycleMixin:
 
     def _create_transport(self, manifest: PluginManifest, plugin_dir: Path) -> BaseTransport | None:
         """Create transport based on manifest."""
-        if manifest.transport == "http":
+        transport = (manifest.transport or "").lower()
+        if transport == "http":
             if not manifest.http_url:
                 logger.error("HTTP transport requires http_url: %s", manifest.name)
                 return None
             return HttpTransport(manifest.http_url)
 
+        language = (manifest.language or "").lower()
         command = manifest.command
         if not command:
-            if manifest.language == "python":
-                command = f"python {manifest.entry}"
-            elif manifest.language in ("node", "nodejs", "javascript"):
-                command = f"node {manifest.entry}"
+            if language == "python":
+                python_exec = "python"
+                try:
+                    from ..config import get_config_loader
+
+                    venv_dir_name = get_config_loader().get_app_config().plugins.python_venv_dir or ".venv"
+                except Exception:
+                    venv_dir_name = ".venv"
+
+                venv_dir = plugin_dir / venv_dir_name
+                python_path = venv_dir / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+                if python_path.exists():
+                    python_exec = str(python_path)
+
+                command = f'"{python_exec}" "{manifest.entry}"'
+            elif language in ("node", "nodejs", "javascript"):
+                command = f'node "{manifest.entry}"'
+            elif language in ("go", "golang"):
+                command = f'go run "{manifest.entry}"'
+            elif language in ("binary", "exe", "native", "cpp", "c++", "cxx", "c", "rust"):
+                command = manifest.entry
             else:
                 logger.error("Unknown language: %s", manifest.language)
                 return None

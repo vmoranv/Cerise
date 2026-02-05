@@ -31,6 +31,8 @@ class PluginsConfig(BaseModel):
     enabled: bool = True
     auto_start: bool = True
     plugins_dir: str = ""  # Empty = use default ~/.cerise/plugins
+    auto_install_dependencies: bool = False
+    python_venv_dir: str = ".venv"
 
 
 class TTSConfig(BaseModel):
@@ -75,6 +77,13 @@ class CapabilitiesConfig(BaseModel):
     capabilities: dict[str, CapabilityToggle] = Field(default_factory=dict)
 
 
+class ToolCallConfig(BaseModel):
+    """Tool-calling execution config (permissions + context hygiene)."""
+
+    permissions: list[str] = Field(default_factory=list)
+    max_result_chars: int = 4000
+
+
 class StarAbilityToggle(BaseModel):
     """Star ability toggle."""
 
@@ -114,6 +123,7 @@ class AppConfig(BaseModel):
     plugins: PluginsConfig = Field(default_factory=PluginsConfig)
     tts: TTSConfig = Field(default_factory=TTSConfig)
     capabilities: CapabilitiesConfig = Field(default_factory=CapabilitiesConfig)
+    tools: ToolCallConfig = Field(default_factory=ToolCallConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     bus: BusConfig = Field(default_factory=BusConfig)
 

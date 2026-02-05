@@ -38,6 +38,9 @@ dev = [
     "ruff>=0.14.13",
     "mypy>=1.19.1",
 ]
+admin = [
+    "python-multipart>=0.0.20",
+]
 
 [project.scripts]
 cerise = "apps.core.main:main"

@@ -7,6 +7,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from ...abilities import AbilityContext
+from ...config import get_config_loader
 from ..providers import ChatOptions
 from ..providers import Message as ProviderMessage
 from .ports import AbilityRegistryProtocol, ProviderRegistryProtocol
@@ -19,11 +20,35 @@ if TYPE_CHECKING:
 
 
 def _build_tool_context(session: Session) -> AbilityContext:
+    loader = get_config_loader()
+    config = loader.get_app_config()
+    permissions = list(config.tools.permissions)
     return AbilityContext(
         user_id=session.user_id,
         session_id=session.id,
-        permissions=["system.execute", "network.http"],
+        permissions=permissions,
     )
+
+
+def _truncate(text: str, *, max_chars: int) -> str:
+    if max_chars <= 0:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars]}\n...[truncated]"
+
+
+def _format_tool_result(payload, *, max_chars: int) -> str:
+    if payload is None:
+        return ""
+    if isinstance(payload, (dict, list)):
+        try:
+            text = json.dumps(payload, ensure_ascii=False)
+        except Exception:
+            text = str(payload)
+    else:
+        text = str(payload)
+    return _truncate(text, max_chars=max_chars)
 
 
 async def handle_tool_calls(
@@ -45,6 +70,7 @@ async def handle_tool_calls(
     current = response
     rounds = 0
     max_rounds = max(1, int(max_rounds))
+    max_chars = max(0, int(get_config_loader().get_app_config().tools.max_result_chars))
 
     while current.tool_calls and rounds < max_rounds:
         rounds += 1
@@ -67,7 +93,10 @@ async def handle_tool_calls(
             context = _build_tool_context(session)
             result = await ability_registry.execute(tool_name, tool_args, context)
 
-            text = str(result.data) if result.success else result.error or "Error"
+            if result.success:
+                text = _format_tool_result(result.data, max_chars=max_chars)
+            else:
+                text = _truncate(result.error or "Error", max_chars=max_chars)
             session.add_tool_result(tool_id or "", text, name=tool_name)
 
             if skill_service is not None:
@@ -100,4 +129,4 @@ async def handle_tool_calls(
 
         current = await ai_provider.chat(messages, options)
 
-    return current.content
+    return current.content or ""

@@ -69,6 +69,11 @@ class CapabilityScheduler:
             priority=base.priority,
         )
 
+    def decision_for(self, ability_name: str) -> CapabilityDecision:
+        """Return the resolved capability decision for an ability."""
+
+        return self._resolve(ability_name)
+
     def _resolve_star(self, ability_name: str) -> CapabilityDecision | None:
         if not self._star_registry or not self._owner_provider:
             return None
@@ -109,5 +114,9 @@ class CapabilityScheduler:
         if not decision.enabled:
             logger.info("Ability '%s' disabled by capability config", ability_name)
             return AbilityResult(success=False, error=f"Ability '{ability_name}' disabled")
+
+        if not decision.allow_tools:
+            logger.info("Ability '%s' tool execution disabled by capability config", ability_name)
+            return AbilityResult(success=False, error=f"Ability '{ability_name}' tool execution disabled")
 
         return await self._registry.execute(ability_name, params, context)

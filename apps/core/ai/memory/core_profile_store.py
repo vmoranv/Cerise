@@ -118,7 +118,7 @@ class CoreProfileStore:
             DELETE FROM core_profiles
             WHERE profile_id NOT IN (
                 SELECT profile_id FROM core_profiles
-                ORDER BY updated_at DESC
+                ORDER BY updated_at DESC, rowid DESC
                 LIMIT ?
             )
             """,

@@ -26,6 +26,7 @@ from .schemas import (
     StarAbilityToggle,
     StarEntry,
     StarRegistry,
+    ToolCallConfig,
     TTSConfig,
     VoiceConfig,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "LoggingConfig",
     "McpConfig",
     "McpServerEntry",
+    "ToolCallConfig",
     "ProviderConfig",
     "ProvidersConfig",
     "CharacterConfig",

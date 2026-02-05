@@ -255,7 +255,22 @@ def _resolve_plugins_dir() -> Path:
     loader = get_config_loader()
     for base in Path(__file__).resolve().parents:
         repo_plugins = base / "plugins"
-        if repo_plugins.exists():
+        if not repo_plugins.exists() or not repo_plugins.is_dir():
+            continue
+
+        # We have two different "plugins" directories in the repo:
+        # - repo-root/plugins (runtime plugin workspace; contains plugin folders with manifest.json)
+        # - apps/core/plugins (Python package implementing the plugin system; no manifest.json children)
+        # Prefer the runtime workspace by checking for child manifest.json files.
+        try:
+            has_manifest_child = any(
+                child.is_dir() and not child.name.startswith("_") and (child / "manifest.json").exists()
+                for child in repo_plugins.iterdir()
+            )
+        except Exception:
+            has_manifest_child = False
+
+        if has_manifest_child:
             return repo_plugins
     return loader.get_plugins_dir()
 

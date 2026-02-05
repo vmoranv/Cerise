@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 from ..config import InstalledPlugin
+from .name_safety import validate_plugin_name
 
 
 class RegistryMixin:
@@ -14,6 +15,11 @@ class RegistryMixin:
 
     async def uninstall(self, plugin_name: str) -> bool:
         """Uninstall a plugin."""
+        try:
+            plugin_name = validate_plugin_name(plugin_name)
+        except ValueError:
+            return False
+
         plugin_dir = self.plugins_dir / plugin_name
 
         if plugin_dir.exists():
