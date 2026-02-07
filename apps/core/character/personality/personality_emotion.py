@@ -6,6 +6,9 @@ from .traits import PersonalityTrait
 
 
 class EmotionBiasMixin:
+    def get_trait(self, trait: PersonalityTrait) -> float:
+        raise NotImplementedError
+
     def get_emotion_bias(self) -> dict[str, float]:
         """Get emotion tendencies based on personality."""
         return {

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...ai import DialogueEngine
@@ -54,7 +56,7 @@ async def get_session(
 async def delete_session(
     session_id: str,
     dialogue_engine: DialogueEngine = Depends(get_dialogue_engine),
-) -> dict:
+) -> dict[str, Any]:
     """Delete a session."""
     if dialogue_engine.delete_session(session_id):
         return {"status": "deleted"}

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class GitHubInstallRequest(BaseModel):
@@ -15,24 +17,24 @@ class ProviderCreateRequest(BaseModel):
     type: str
     name: str = ""
     enabled: bool = True
-    config: dict = {}
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConfigUpdateRequest(BaseModel):
-    config: dict
+    config: dict[str, Any]
 
 
 class MemoryConfigUpdateRequest(BaseModel):
-    config: dict
+    config: dict[str, Any]
 
 
 class PluginConfigUpdate(BaseModel):
     enabled: bool | None = None
-    config: dict | None = None
+    config: dict[str, Any] | None = None
 
 
 class AbilityExecuteRequest(BaseModel):
-    params: dict = {}
+    params: dict[str, Any] = Field(default_factory=dict)
     user_id: str | None = None
     session_id: str | None = None
 
@@ -48,8 +50,8 @@ class StarAbilityUpdate(BaseModel):
 
 
 class StarConfigUpdate(BaseModel):
-    config: dict
+    config: dict[str, Any]
 
 
 class StarConfigValidate(BaseModel):
-    config: dict | None = None
+    config: dict[str, Any] | None = None

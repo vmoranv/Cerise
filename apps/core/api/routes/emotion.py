@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 
 from ...character import EmotionStateMachine
@@ -12,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/emotion")
-async def get_emotion(emotion_state: EmotionStateMachine = Depends(get_emotion_state)) -> dict:
+async def get_emotion(emotion_state: EmotionStateMachine = Depends(get_emotion_state)) -> dict[str, Any]:
     """Get current emotion state."""
     return emotion_state.get_animation_params()
 
@@ -21,7 +23,7 @@ async def get_emotion(emotion_state: EmotionStateMachine = Depends(get_emotion_s
 async def set_emotion(
     request: EmotionUpdate,
     emotion_state: EmotionStateMachine = Depends(get_emotion_state),
-) -> dict:
+) -> dict[str, Any]:
     """Manually set emotion state."""
     emotion_state.set_emotion(request.emotion, request.intensity)
     return emotion_state.get_animation_params()

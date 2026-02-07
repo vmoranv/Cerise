@@ -5,12 +5,49 @@ from __future__ import annotations
 import numpy as np
 from apps.core.contracts.events import OPERATION_INPUT_PERFORMED, build_operation_input_performed
 
-from .input.gamepad import GamepadState
+from .capture.base import CaptureMethod
+from .input.base import Interaction
+from .input.gamepad import Gamepad, GamepadState
+from .input.policy import GamepadPolicy
 from .vision.box import Box
 
 
 class OperationInputMixin:
     """Input interaction helpers."""
+
+    _interaction: Interaction
+    _gamepad: Gamepad
+    _capture: CaptureMethod
+    _policy: GamepadPolicy
+    _hwnd: int
+
+    def _publish_event(self, event_type: str, data: dict[str, object]) -> None:
+        raise NotImplementedError
+
+    @staticmethod
+    def _box_payload(box: Box) -> dict[str, object]:
+        raise NotImplementedError
+
+    def find_template(
+        self,
+        template: str | np.ndarray,
+        threshold: float = 0.8,
+        frame: np.ndarray | None = None,
+        region: Box | None = None,
+        name: str | None = None,
+    ) -> Box | None:
+        raise NotImplementedError
+
+    def wait_template(
+        self,
+        template: str | np.ndarray,
+        threshold: float = 0.8,
+        timeout: float = 10.0,
+        interval: float = 0.1,
+        region: Box | None = None,
+        name: str | None = None,
+    ) -> Box | None:
+        raise NotImplementedError
 
     def click(self, x: int, y: int, button: str = "left") -> None:
         """Click a coordinate."""

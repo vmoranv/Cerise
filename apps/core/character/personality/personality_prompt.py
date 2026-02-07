@@ -13,6 +13,9 @@ class PromptMixin:
     quirks: list[str]
     custom_prompts: dict[str, str]
 
+    def get_trait(self, trait: PersonalityTrait) -> float:
+        raise NotImplementedError
+
     def generate_system_prompt(self) -> str:
         """Generate a system prompt based on personality."""
         sections = []

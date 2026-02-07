@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...abilities import AbilityContext, AbilityRegistry, CapabilityScheduler
@@ -9,10 +11,13 @@ from ...config import get_config_loader
 from ..dependencies import get_services
 from .models import AbilityExecuteRequest
 
+if TYPE_CHECKING:
+    from ..container import AppServices
+
 router = APIRouter()
 
 
-def _build_scheduler(services) -> CapabilityScheduler:
+def _build_scheduler(services: AppServices) -> CapabilityScheduler:
     loader = get_config_loader()
     app_config = loader.get_app_config()
     star_registry = loader.get_star_registry()
@@ -25,10 +30,10 @@ def _build_scheduler(services) -> CapabilityScheduler:
 
 
 @router.get("/abilities")
-async def list_abilities(services=Depends(get_services)) -> dict:
+async def list_abilities(services: AppServices = Depends(get_services)) -> dict[str, Any]:
     scheduler = _build_scheduler(services)
 
-    items: list[dict] = []
+    items: list[dict[str, Any]] = []
     for name, ability in AbilityRegistry.get_all().items():
         decision = scheduler.decision_for(name)
         owner = services.plugin_manager.get_ability_owner(name)
@@ -52,7 +57,7 @@ async def list_abilities(services=Depends(get_services)) -> dict:
 
 
 @router.get("/abilities/{name}")
-async def get_ability(name: str, services=Depends(get_services)) -> dict:
+async def get_ability(name: str, services: AppServices = Depends(get_services)) -> dict[str, Any]:
     ability = AbilityRegistry.get(name)
     if not ability:
         raise HTTPException(status_code=404, detail="Ability not found")
@@ -78,7 +83,7 @@ async def get_ability(name: str, services=Depends(get_services)) -> dict:
 
 
 @router.get("/abilities/tool-schemas")
-async def list_tool_schemas(services=Depends(get_services)) -> dict:
+async def list_tool_schemas(services: AppServices = Depends(get_services)) -> dict[str, Any]:
     scheduler = _build_scheduler(services)
     return {"tools": scheduler.get_tool_schemas()}
 
@@ -87,8 +92,8 @@ async def list_tool_schemas(services=Depends(get_services)) -> dict:
 async def execute_ability(
     name: str,
     request: AbilityExecuteRequest,
-    services=Depends(get_services),
-) -> dict:
+    services: AppServices = Depends(get_services),
+) -> dict[str, Any]:
     scheduler = _build_scheduler(services)
 
     loader = get_config_loader()

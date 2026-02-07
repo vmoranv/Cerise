@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from ...config import AppConfig, get_config_loader
@@ -11,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/config")
-async def get_config() -> dict:
+async def get_config() -> dict[str, Any]:
     """Get current application configuration."""
     loader = get_config_loader()
     config = loader.get_app_config()
@@ -19,7 +21,7 @@ async def get_config() -> dict:
 
 
 @router.put("/config")
-async def update_config(request: ConfigUpdateRequest) -> dict:
+async def update_config(request: ConfigUpdateRequest) -> dict[str, Any]:
     """Update application configuration."""
     loader = get_config_loader()
 

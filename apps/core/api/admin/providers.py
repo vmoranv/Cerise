@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from ...config import ProviderConfig, get_config_loader
@@ -21,7 +23,7 @@ _SECRET_KEYS = {
 }
 
 
-def _redact_value(value):
+def _redact_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {k: _redact_value(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -29,8 +31,8 @@ def _redact_value(value):
     return value
 
 
-def _redact_config(config: dict) -> dict:
-    redacted: dict = {}
+def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
+    redacted: dict[str, Any] = {}
     for k, v in config.items():
         if k.lower() in _SECRET_KEYS:
             if isinstance(v, list):
@@ -43,7 +45,7 @@ def _redact_config(config: dict) -> dict:
 
 
 @router.get("/providers")
-async def list_providers(include: str | None = None) -> dict:
+async def list_providers(include: str | None = None) -> dict[str, Any]:
     """List all configured providers."""
     loader = get_config_loader()
     config = loader.get_providers_config()
@@ -78,7 +80,7 @@ async def list_providers(include: str | None = None) -> dict:
 
 
 @router.get("/providers/{provider_id}/models")
-async def list_provider_models(provider_id: str) -> dict:
+async def list_provider_models(provider_id: str) -> dict[str, Any]:
     """List available models for a provider."""
     from ...ai.providers import ProviderRegistry
 
@@ -93,7 +95,7 @@ async def list_provider_models(provider_id: str) -> dict:
 
 
 @router.post("/providers")
-async def add_provider(request: ProviderCreateRequest) -> dict:
+async def add_provider(request: ProviderCreateRequest) -> dict[str, Any]:
     """Add a new provider."""
     loader = get_config_loader()
 
@@ -114,7 +116,7 @@ async def add_provider(request: ProviderCreateRequest) -> dict:
 
 
 @router.put("/providers/{provider_id}")
-async def update_provider(provider_id: str, request: ProviderCreateRequest) -> dict:
+async def update_provider(provider_id: str, request: ProviderCreateRequest) -> dict[str, Any]:
     """Update a provider."""
     loader = get_config_loader()
     config = loader.get_providers_config()
@@ -135,7 +137,7 @@ async def update_provider(provider_id: str, request: ProviderCreateRequest) -> d
 
 
 @router.delete("/providers/{provider_id}")
-async def delete_provider(provider_id: str) -> dict:
+async def delete_provider(provider_id: str) -> dict[str, Any]:
     """Delete a provider."""
     loader = get_config_loader()
 
@@ -146,7 +148,7 @@ async def delete_provider(provider_id: str) -> dict:
 
 
 @router.post("/providers/{provider_id}/test")
-async def test_provider(provider_id: str) -> dict:
+async def test_provider(provider_id: str) -> dict[str, Any]:
     """Test provider connection."""
     from ...ai.providers import ProviderRegistry
 
@@ -162,7 +164,7 @@ async def test_provider(provider_id: str) -> dict:
 
 
 @router.post("/providers/{provider_id}/set-default")
-async def set_default_provider(provider_id: str) -> dict:
+async def set_default_provider(provider_id: str) -> dict[str, Any]:
     """Set default provider."""
     loader = get_config_loader()
     config = loader.get_providers_config()

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import AsyncIterator
+from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,7 +24,7 @@ from ..openai_models import OpenAIChatCompletionsRequest
 router = APIRouter(prefix="/v1")
 
 
-def _content_to_text(content: str | list[dict] | None) -> str:
+def _content_to_text(content: str | list[dict[str, Any]] | None) -> str:
     if content is None:
         return ""
     if isinstance(content, str):
@@ -61,14 +63,14 @@ def _should_use_tools(request: OpenAIChatCompletionsRequest) -> bool:
 
 
 @router.get("/models")
-async def list_models() -> dict:
+async def list_models() -> dict[str, Any]:
     """List known models in OpenAI-compatible format."""
 
     loader = get_config_loader()
     app_config = loader.get_app_config()
     providers_config = loader.get_providers_config()
 
-    models: list[dict] = []
+    models: list[dict[str, Any]] = []
     seen: set[str] = set()
 
     def add_model(model_id: str) -> None:
@@ -152,7 +154,7 @@ async def chat_completions(
 
     if request.stream:
 
-        async def event_stream():
+        async def event_stream() -> AsyncIterator[str]:
             try:
                 async for chunk in dialogue_engine.stream_chat(
                     session=session,

@@ -14,7 +14,7 @@ class VGamepadGamepad:
 
     def __init__(self) -> None:
         try:
-            import vgamepad as vg  # type: ignore[import-not-found]
+            import vgamepad as vg
         except ImportError as e:  # pragma: no cover
             raise ImportError("vgamepad not installed. Install with: pip install vgamepad") from e
 
@@ -47,7 +47,7 @@ class VGamepadGamepad:
         if name not in mapping:
             return
 
-        from vgamepad import XUSB_BUTTON  # type: ignore[import-not-found]
+        from vgamepad import XUSB_BUTTON
 
         btn = {
             "a": XUSB_BUTTON.XUSB_GAMEPAD_A,

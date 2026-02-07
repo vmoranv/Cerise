@@ -7,6 +7,9 @@ from re import Pattern
 
 from apps.core.contracts.events import OPERATION_WINDOW_CONNECTED, build_operation_window_connected
 
+from .capture.base import CaptureMethod
+from .input.base import Interaction
+from .input.gamepad import Gamepad
 from .window import (
     WindowInfo,
     bring_to_front,
@@ -18,6 +21,14 @@ from .window import (
 
 class OperationWindowMixin:
     """Window management helpers."""
+
+    _capture: CaptureMethod
+    _interaction: Interaction
+    _gamepad: Gamepad
+    _hwnd: int
+
+    def _publish_event(self, event_type: str, data: dict[str, object]) -> None:
+        raise NotImplementedError
 
     def connect(self, hwnd: int) -> bool:
         """Connect to a target window."""

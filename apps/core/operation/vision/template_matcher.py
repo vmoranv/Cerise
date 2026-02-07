@@ -93,16 +93,16 @@ def match_template_all(
     if len(confidences) == 0:
         return []
 
-    boxes_for_nms = []
+    boxes_for_nms: list[list[int]] = []
     for y, x in zip(*locations):
         boxes_for_nms.append([x, y, x + tw, y + th])
 
-    boxes_for_nms = np.array(boxes_for_nms)
-    confidences = np.array(confidences)
+    boxes_for_nms_arr = np.array(boxes_for_nms)
+    confidences_arr = np.array(confidences)
 
     indices = cv2.dnn.NMSBoxes(
-        boxes_for_nms.tolist(),
-        confidences.tolist(),
+        boxes_for_nms_arr.tolist(),
+        confidences_arr.tolist(),
         threshold,
         nms_threshold,
     )
@@ -111,15 +111,17 @@ def match_template_all(
         return []
 
     results: list[Box] = []
-    for i in indices.flatten()[:max_results]:
-        x, y = boxes_for_nms[i][:2]
+    flattened_indices = np.array(indices).flatten()
+    for i in flattened_indices[:max_results]:
+        idx = int(i)
+        x, y = boxes_for_nms_arr[idx][:2]
         results.append(
             Box(
                 x=int(x),
                 y=int(y),
                 width=tw,
                 height=th,
-                confidence=float(confidences[i]),
+                confidence=float(confidences_arr[idx]),
                 name=name,
             )
         )

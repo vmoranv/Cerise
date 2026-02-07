@@ -7,7 +7,10 @@ sites.
 
 from __future__ import annotations
 
-from typing import Literal, overload
+from collections.abc import Iterable
+from typing import Literal, cast, overload
+
+import numpy as np
 
 from .base import CaptureMethod
 from .fallback import FallbackCapture
@@ -23,7 +26,12 @@ def available_capture_backends() -> list[str]:
 
 
 @overload
-def create_capture(backend: Literal["image"], *, loop: bool = True, images=None) -> CaptureMethod:
+def create_capture(
+    backend: Literal["image"],
+    *,
+    loop: bool = True,
+    images: Iterable[np.ndarray] | None = None,
+) -> CaptureMethod:
     pass
 
 
@@ -33,7 +41,7 @@ def create_capture(backend: CaptureBackend = "auto", **kwargs: object) -> Captur
 
 
 def create_capture(backend: CaptureBackend = "auto", **kwargs: object) -> CaptureMethod:
-    backend = backend.lower().strip()  # type: ignore[assignment]
+    backend = cast(CaptureBackend, backend.lower().strip())
 
     if backend == "bitblt":
         return Win32BitBltCapture()
@@ -42,10 +50,17 @@ def create_capture(backend: CaptureBackend = "auto", **kwargs: object) -> Captur
         return Win32PrintWindowCapture()
 
     if backend == "image":
-        images = kwargs.pop("images", None)
+        images_obj = kwargs.pop("images", None)
         loop = bool(kwargs.pop("loop", True))
         if kwargs:
             raise TypeError(f"Unknown ImageCapture kwargs: {sorted(kwargs.keys())}")
+        images: Iterable[np.ndarray] | None
+        if images_obj is None:
+            images = None
+        elif isinstance(images_obj, Iterable):
+            images = cast(Iterable[np.ndarray], images_obj)
+        else:
+            raise TypeError("images must be an iterable of ndarray")
         return ImageCapture(images=images, loop=loop)
 
     if backend == "auto":

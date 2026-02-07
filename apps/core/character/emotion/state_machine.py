@@ -42,7 +42,7 @@ class EmotionStateMachine(TransitionMixin, DecayMixin, SerializationMixin):
         self._is_transitioning = False
         self._listeners: list[Callable[[EmotionState, EmotionState], None]] = []
         self._message_bus = bus
-        self._decay_task: asyncio.Task | None = None
+        self._decay_task: asyncio.Task[None] | None = None
 
     @property
     def current_state(self) -> EmotionState:

@@ -37,7 +37,7 @@ class NullGamepadPolicy:
     async def predict(
         self,
         *,
-        frame=None,  # noqa: ANN001
+        frame: np.ndarray | None = None,
         meta: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> GamepadState:
         return GamepadState()

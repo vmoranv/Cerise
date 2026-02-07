@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Literal, overload
+from collections.abc import Mapping
+from typing import Literal, cast, overload
 
 from .base import Interaction
 from .gamepad import Gamepad, NullGamepad
 from .null import NullInteraction
 from .policy import GamepadPolicy, NullGamepadPolicy
+from .policy_callable import PredictCallable
 from .win32 import Win32Interaction
 from .win32_sendinput import Win32SendInputInteraction
 
@@ -29,7 +31,7 @@ def available_policy_backends() -> list[str]:
 
 
 def create_interaction(backend: InteractionBackend = "postmessage") -> Interaction:
-    backend = backend.lower().strip()  # type: ignore[assignment]
+    backend = cast(InteractionBackend, backend.lower().strip())
     if backend == "postmessage":
         return Win32Interaction()
     if backend == "sendinput":
@@ -40,7 +42,7 @@ def create_interaction(backend: InteractionBackend = "postmessage") -> Interacti
 
 
 def create_gamepad(backend: GamepadBackend = "null") -> Gamepad:
-    backend = backend.lower().strip()  # type: ignore[assignment]
+    backend = cast(GamepadBackend, backend.lower().strip())
     if backend == "null":
         return NullGamepad()
     if backend == "vgamepad":
@@ -61,19 +63,19 @@ def create_policy(
     *,
     endpoint: str,
     timeout: float = 10.0,
-    headers=None,
+    headers: dict[str, str] | None = None,
     send_frame: bool = True,
 ) -> GamepadPolicy:
     pass
 
 
 @overload
-def create_policy(backend: Literal["callable"], *, predict) -> GamepadPolicy:
+def create_policy(backend: Literal["callable"], *, predict: PredictCallable) -> GamepadPolicy:
     pass
 
 
 def create_policy(backend: PolicyBackend = "null", **kwargs: object) -> GamepadPolicy:
-    backend = backend.lower().strip()  # type: ignore[assignment]
+    backend = cast(PolicyBackend, backend.lower().strip())
     if backend == "null":
         if kwargs:
             raise TypeError(f"Unknown create_policy kwargs: {sorted(kwargs.keys())}")
@@ -82,20 +84,32 @@ def create_policy(backend: PolicyBackend = "null", **kwargs: object) -> GamepadP
     if backend == "http":
         from .policy_http import HttpGamepadPolicy
 
-        endpoint = str(kwargs.pop("endpoint"))
-        timeout = float(kwargs.pop("timeout", 10.0))
-        headers = kwargs.pop("headers", None)
+        endpoint_obj = kwargs.pop("endpoint")
+        timeout_obj = kwargs.pop("timeout", 10.0)
+        headers_obj = kwargs.pop("headers", None)
         send_frame = bool(kwargs.pop("send_frame", True))
         if kwargs:
             raise TypeError(f"Unknown HttpGamepadPolicy kwargs: {sorted(kwargs.keys())}")
+        endpoint = str(endpoint_obj)
+        if not isinstance(timeout_obj, (int, float, str)):
+            raise TypeError("timeout must be int, float, or string")
+        timeout = float(timeout_obj)
+        headers: dict[str, str] | None = None
+        if headers_obj is not None:
+            if not isinstance(headers_obj, Mapping):
+                raise TypeError("headers must be a mapping of string keys/values")
+            headers = {str(k): str(v) for k, v in headers_obj.items()}
         return HttpGamepadPolicy(endpoint, timeout=timeout, headers=headers, send_frame=send_frame)
 
     if backend == "callable":
         from .policy_callable import CallableGamepadPolicy
 
-        predict = kwargs.pop("predict")
+        predict_obj = kwargs.pop("predict")
         if kwargs:
             raise TypeError(f"Unknown CallableGamepadPolicy kwargs: {sorted(kwargs.keys())}")
+        if not callable(predict_obj):
+            raise TypeError("predict must be callable")
+        predict = cast(PredictCallable, predict_obj)
         return CallableGamepadPolicy(predict)
 
     raise ValueError(f"Unknown policy backend: {backend!r}. Available: {available_policy_backends()}")

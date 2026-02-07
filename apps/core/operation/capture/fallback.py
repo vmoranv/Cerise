@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from .base import CaptureMethod
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class FallbackCapture:
@@ -53,7 +57,7 @@ class FallbackCapture:
         active = self._active
         return active is not None and active.connected()
 
-    def get_frame(self):
+    def get_frame(self) -> np.ndarray | None:
         active = self._active
         if active is None:
             return None

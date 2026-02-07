@@ -15,6 +15,19 @@ from .vision.template import find_color, load_template, match_template, match_te
 class OperationVisionMixin:
     """Template matching and vision helpers."""
 
+    _template_cache: dict[str, np.ndarray]
+    _template_dir: Path | None
+
+    def _publish_event(self, event_type: str, data: dict[str, object]) -> None:
+        raise NotImplementedError
+
+    @staticmethod
+    def _box_payload(box: Box) -> dict[str, object]:
+        raise NotImplementedError
+
+    def get_frame(self) -> np.ndarray | None:
+        raise NotImplementedError
+
     def _get_template(self, template: str | np.ndarray) -> np.ndarray | None:
         """Get template image with cache."""
         if isinstance(template, np.ndarray):

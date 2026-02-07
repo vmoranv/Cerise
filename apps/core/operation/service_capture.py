@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 
+from .capture.base import CaptureMethod
 from .vision.box import Box
 
 
 class OperationCaptureMixin:
     """Screen capture helpers."""
+
+    _capture: CaptureMethod
 
     def get_frame(self) -> np.ndarray | None:
         """Get current frame."""

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from ...config import get_config_loader
@@ -11,8 +13,8 @@ from .models import StarAbilityUpdate, StarConfigUpdate, StarConfigValidate, Sta
 router = APIRouter()
 
 
-def _merge_dict(base: dict, override: dict) -> dict:
-    result = base.copy()
+def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = base.copy()
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _merge_dict(result[key], value)
@@ -21,22 +23,25 @@ def _merge_dict(base: dict, override: dict) -> dict:
     return result
 
 
-def _load_schema(loader, plugin_name: str) -> dict | None:
+def _load_schema(loader: Any, plugin_name: str) -> dict[str, Any] | None:
     plugin_dir = loader.get_plugins_dir() / plugin_name
     if not plugin_dir.exists():
         return None
-    return loader.load_star_schema(plugin_dir)
+    schema = loader.load_star_schema(plugin_dir)
+    if isinstance(schema, dict):
+        return schema
+    return None
 
 
-def _get_or_create_entry(loader, plugin_name: str) -> StarEntry:
+def _get_or_create_entry(loader: Any, plugin_name: str) -> StarEntry:
     entry = loader.get_star_entry(plugin_name)
-    if entry:
+    if isinstance(entry, StarEntry):
         return entry
     return StarEntry(name=plugin_name)
 
 
 @router.get("/stars")
-async def list_stars() -> dict:
+async def list_stars() -> dict[str, Any]:
     """List star registry entries."""
     loader = get_config_loader()
     registry = loader.get_plugins_registry()
@@ -55,7 +60,7 @@ async def list_stars() -> dict:
 
 
 @router.get("/stars/{name}")
-async def get_star(name: str) -> dict:
+async def get_star(name: str) -> dict[str, Any]:
     """Get star entry and config."""
     loader = get_config_loader()
     entry = _get_or_create_entry(loader, name)
@@ -69,7 +74,7 @@ async def get_star(name: str) -> dict:
 
 
 @router.put("/stars/{name}")
-async def update_star_entry(name: str, request: StarEntryUpdate) -> dict:
+async def update_star_entry(name: str, request: StarEntryUpdate) -> dict[str, Any]:
     """Update star entry toggles."""
     loader = get_config_loader()
     entry = _get_or_create_entry(loader, name)
@@ -82,7 +87,7 @@ async def update_star_entry(name: str, request: StarEntryUpdate) -> dict:
 
 
 @router.put("/stars/{name}/abilities/{ability}")
-async def update_star_ability(name: str, ability: str, request: StarAbilityUpdate) -> dict:
+async def update_star_ability(name: str, ability: str, request: StarAbilityUpdate) -> dict[str, Any]:
     """Update star ability toggles."""
     loader = get_config_loader()
     entry = _get_or_create_entry(loader, name)
@@ -97,7 +102,7 @@ async def update_star_ability(name: str, ability: str, request: StarAbilityUpdat
 
 
 @router.get("/stars/{name}/schema")
-async def get_star_schema(name: str) -> dict:
+async def get_star_schema(name: str) -> dict[str, Any]:
     """Get star config schema."""
     loader = get_config_loader()
     schema = _load_schema(loader, name)
@@ -107,7 +112,7 @@ async def get_star_schema(name: str) -> dict:
 
 
 @router.get("/stars/{name}/config")
-async def get_star_config(name: str) -> dict:
+async def get_star_config(name: str) -> dict[str, Any]:
     """Get star config data."""
     loader = get_config_loader()
     schema = _load_schema(loader, name)
@@ -116,7 +121,7 @@ async def get_star_config(name: str) -> dict:
 
 
 @router.put("/stars/{name}/config")
-async def update_star_config(name: str, request: StarConfigUpdate) -> dict:
+async def update_star_config(name: str, request: StarConfigUpdate) -> dict[str, Any]:
     """Update star config data."""
     loader = get_config_loader()
     schema = _load_schema(loader, name)
@@ -132,7 +137,7 @@ async def update_star_config(name: str, request: StarConfigUpdate) -> dict:
 
 
 @router.post("/stars/{name}/config/validate")
-async def validate_star_config(name: str, request: StarConfigValidate) -> dict:
+async def validate_star_config(name: str, request: StarConfigValidate) -> dict[str, Any]:
     """Validate star config data."""
     loader = get_config_loader()
     schema = _load_schema(loader, name)

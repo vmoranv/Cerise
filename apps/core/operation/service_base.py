@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from apps.core.contracts.events import (
     OPERATION_ACTION_COMPLETED,
@@ -171,7 +171,7 @@ class OperationServiceBase:
         self._hwnd = 0
         self._template_cache.clear()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:

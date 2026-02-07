@@ -278,7 +278,7 @@ def bring_to_front(hwnd: int) -> bool:
 
 def is_foreground(hwnd: int) -> bool:
     """检查窗口是否在前台"""
-    return GetForegroundWindow() == hwnd
+    return int(GetForegroundWindow()) == hwnd
 
 
 def minimize_window(hwnd: int) -> bool:

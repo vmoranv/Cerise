@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from ...ai.memory.config import build_memory_config, config_to_dict, load_memory_config, save_memory_config
@@ -12,14 +14,14 @@ router = APIRouter()
 
 
 @router.get("/memory-config")
-async def get_memory_config() -> dict:
+async def get_memory_config() -> dict[str, Any]:
     """Get current memory configuration."""
     config = load_memory_config()
     return config_to_dict(config)
 
 
 @router.put("/memory-config")
-async def update_memory_config(request: MemoryConfigUpdateRequest) -> dict:
+async def update_memory_config(request: MemoryConfigUpdateRequest) -> dict[str, Any]:
     """Update memory configuration."""
     try:
         current = load_memory_config()

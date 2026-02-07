@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...services.ports import Live2DDriver
@@ -15,7 +17,7 @@ router = APIRouter()
 async def set_live2d_emotion(
     request: Live2DEmotionUpdate,
     live2d: Live2DDriver = Depends(get_live2d),
-) -> dict:
+) -> dict[str, Any]:
     """Manually set Live2D emotion parameters."""
     result = await live2d.set_emotion(
         valence=request.valence,
@@ -36,7 +38,7 @@ async def set_live2d_emotion(
 async def set_live2d_parameters(
     request: Live2DParametersUpdate,
     live2d: Live2DDriver = Depends(get_live2d),
-) -> dict:
+) -> dict[str, Any]:
     """Manually set arbitrary Live2D parameters."""
     result = await live2d.set_parameters(
         parameters=[param.model_dump(exclude_none=True) for param in request.parameters],

@@ -9,8 +9,11 @@ from .types import EmotionState, EmotionStateData
 
 class DecayMixin:
     _current: EmotionStateData
-    _decay_task: asyncio.Task | None
+    _decay_task: asyncio.Task[None] | None
     DECAY_RATES: dict[EmotionState, float]
+
+    async def transition_to(self, emotion: EmotionState, duration: float = 0.5, intensity: float = 1.0) -> None:
+        raise NotImplementedError
 
     async def start_decay(self) -> None:
         """Start emotion decay towards neutral."""

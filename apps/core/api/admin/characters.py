@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from ...config import CharacterConfig, get_config_loader
@@ -10,14 +12,14 @@ router = APIRouter()
 
 
 @router.get("/characters")
-async def list_characters() -> dict:
+async def list_characters() -> dict[str, Any]:
     """List available characters."""
     loader = get_config_loader()
     return {"characters": loader.list_characters()}
 
 
 @router.get("/characters/{name}")
-async def get_character(name: str) -> dict:
+async def get_character(name: str) -> dict[str, Any]:
     """Get character configuration."""
     loader = get_config_loader()
     try:
@@ -28,7 +30,7 @@ async def get_character(name: str) -> dict:
 
 
 @router.put("/characters/{name}")
-async def update_character(name: str, config: dict) -> dict:
+async def update_character(name: str, config: dict[str, Any]) -> dict[str, Any]:
     """Update character configuration."""
     loader = get_config_loader()
     try:

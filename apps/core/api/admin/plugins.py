@@ -6,7 +6,7 @@ import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 
@@ -17,13 +17,17 @@ from ...plugins.plugin_types import PluginManifest
 from ..dependencies import get_services
 from .models import GitHubInstallRequest, PluginConfigUpdate
 
+if TYPE_CHECKING:
+    from ...config import ConfigLoader
+    from ..container import AppServices
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
 
-def _merge_dict(base: dict, override: dict) -> dict:
-    result = base.copy()
+def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = base.copy()
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _merge_dict(result[key], value)
@@ -46,14 +50,14 @@ def _read_manifest(manifest_path: Path) -> PluginManifest | None:
 
 
 def _load_star_schema_and_config(
-    *, loader, plugin_name: str, plugin_dir: Path
+    *, loader: ConfigLoader, plugin_name: str, plugin_dir: Path
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     schema = loader.load_star_schema(plugin_dir) if plugin_dir.exists() else None
     config: dict[str, Any] = loader.load_star_config(plugin_name, schema=schema)
     return config, schema
 
 
-async def _maybe_load_plugin(*, plugin_name: str, load: bool, services) -> bool:
+async def _maybe_load_plugin(*, plugin_name: str, load: bool, services: AppServices) -> bool:
     if not load:
         return False
 
@@ -68,7 +72,7 @@ async def _maybe_load_plugin(*, plugin_name: str, load: bool, services) -> bool:
 
 
 @router.get("/plugins")
-async def list_plugins(services=Depends(get_services)) -> dict:
+async def list_plugins(services: AppServices = Depends(get_services)) -> dict[str, Any]:
     """List installed + discovered plugins."""
     installer = PluginInstaller(plugins_dir=services.plugin_manager.plugins_dir)
     registered = {p.name: p for p in installer.list_installed()}
@@ -126,8 +130,8 @@ async def list_plugins(services=Depends(get_services)) -> dict:
 async def install_from_github(
     request: GitHubInstallRequest,
     load: bool = False,
-    services=Depends(get_services),
-) -> dict:
+    services: AppServices = Depends(get_services),
+) -> dict[str, Any]:
     """Install plugin from GitHub."""
     installer = PluginInstaller(plugins_dir=services.plugin_manager.plugins_dir)
 
@@ -137,7 +141,7 @@ async def install_from_github(
     )
 
     if plugin:
-        payload: dict = {"status": "installed", "plugin": plugin.model_dump()}
+        payload: dict[str, Any] = {"status": "installed", "plugin": plugin.model_dump()}
         if await _maybe_load_plugin(plugin_name=plugin.name, load=bool(load), services=services):
             payload["loaded"] = True
         return payload
@@ -149,8 +153,8 @@ async def install_from_github(
 async def install_from_upload(
     request: Request,
     load: bool = False,
-    services=Depends(get_services),
-) -> dict:
+    services: AppServices = Depends(get_services),
+) -> dict[str, Any]:
     """Install plugin from uploaded zip file.
 
     Supports:
@@ -190,7 +194,7 @@ async def install_from_upload(
     plugin = await installer.install_from_zip_bytes(content)
 
     if plugin:
-        payload: dict = {"status": "installed", "plugin": plugin.model_dump()}
+        payload: dict[str, Any] = {"status": "installed", "plugin": plugin.model_dump()}
         if await _maybe_load_plugin(plugin_name=plugin.name, load=bool(load), services=services):
             payload["loaded"] = True
         return payload
@@ -199,7 +203,7 @@ async def install_from_upload(
 
 
 @router.delete("/plugins/{name}")
-async def uninstall_plugin(name: str, services=Depends(get_services)) -> dict:
+async def uninstall_plugin(name: str, services: AppServices = Depends(get_services)) -> dict[str, Any]:
     """Uninstall a plugin."""
     try:
         name = validate_plugin_name(name)
@@ -219,7 +223,7 @@ async def uninstall_plugin(name: str, services=Depends(get_services)) -> dict:
 
 
 @router.get("/plugins/{name}")
-async def get_plugin(name: str, services=Depends(get_services)) -> dict:
+async def get_plugin(name: str, services: AppServices = Depends(get_services)) -> dict[str, Any]:
     """Get plugin info."""
     try:
         name = validate_plugin_name(name)
@@ -258,7 +262,11 @@ async def get_plugin(name: str, services=Depends(get_services)) -> dict:
 
 
 @router.put("/plugins/{name}")
-async def update_plugin_config(name: str, request: PluginConfigUpdate, services=Depends(get_services)) -> dict:
+async def update_plugin_config(
+    name: str,
+    request: PluginConfigUpdate,
+    services: AppServices = Depends(get_services),
+) -> dict[str, Any]:
     """Update plugin configuration (enable/disable, config)."""
     try:
         name = validate_plugin_name(name)
@@ -292,12 +300,12 @@ async def update_plugin_config(name: str, request: PluginConfigUpdate, services=
 
 
 @router.post("/plugins/{name}/enable")
-async def enable_plugin(name: str, services=Depends(get_services)) -> dict:
+async def enable_plugin(name: str, services: AppServices = Depends(get_services)) -> dict[str, Any]:
     """Enable a plugin."""
     return await update_plugin_config(name, PluginConfigUpdate(enabled=True), services)
 
 
 @router.post("/plugins/{name}/disable")
-async def disable_plugin(name: str, services=Depends(get_services)) -> dict:
+async def disable_plugin(name: str, services: AppServices = Depends(get_services)) -> dict[str, Any]:
     """Disable a plugin."""
     return await update_plugin_config(name, PluginConfigUpdate(enabled=False), services)

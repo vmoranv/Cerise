@@ -4,6 +4,7 @@ Emotion state transition helpers.
 
 import asyncio
 from collections.abc import Callable
+from typing import Any
 
 from ...contracts.events import CHARACTER_EMOTION_CHANGED, build_character_emotion_changed
 from ...infrastructure import Event, EventBus
@@ -59,10 +60,12 @@ class TransitionMixin:
         self._message_bus.publish_sync(
             Event(
                 type=CHARACTER_EMOTION_CHANGED,
-                data=build_character_emotion_changed(
-                    from_state=old_state.value,
-                    to_state=emotion.value,
-                    intensity=intensity,
+                data=dict(
+                    build_character_emotion_changed(
+                        from_state=old_state.value,
+                        to_state=emotion.value,
+                        intensity=intensity,
+                    )
                 ),
                 source="emotion_state_machine",
             )
@@ -105,12 +108,15 @@ class TransitionMixin:
             except Exception:
                 pass
 
-        await self._message_bus.emit(
-            CHARACTER_EMOTION_CHANGED,
+        payload: dict[str, Any] = dict(
             build_character_emotion_changed(
                 from_state=old_state.value,
                 to_state=emotion.value,
                 intensity=intensity,
-            ),
+            )
+        )
+        await self._message_bus.emit(
+            CHARACTER_EMOTION_CHANGED,
+            payload,
             source="emotion_state_machine",
         )

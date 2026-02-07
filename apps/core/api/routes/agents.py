@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 from ...ai.agents import AgentService
 from ...infrastructure import Event, EventBus
+from ..container import AppServices
 from ..dependencies import get_agent_service, get_services
 
 router = APIRouter()
@@ -41,13 +43,16 @@ def _serialize_event(event: Event) -> dict[str, Any]:
 
 
 @router.post("/agents")
-async def create_agent(request: AgentCreateRequest, agents: AgentService = Depends(get_agent_service)) -> dict:
+async def create_agent(
+    request: AgentCreateRequest,
+    agents: AgentService = Depends(get_agent_service),
+) -> dict[str, Any]:
     agent = await agents.create(agent_id=request.agent_id, parent_id=request.parent_id, name=request.name)
     return agent.to_dict()
 
 
 @router.get("/agents")
-async def list_agents(agents: AgentService = Depends(get_agent_service)) -> dict:
+async def list_agents(agents: AgentService = Depends(get_agent_service)) -> dict[str, Any]:
     items = await agents.list_agents()
     return {"agents": [agent.to_dict() for agent in items]}
 
@@ -57,7 +62,7 @@ async def send_agent_message(
     agent_id: str,
     request: AgentMessageCreateRequest,
     agents: AgentService = Depends(get_agent_service),
-) -> dict:
+) -> dict[str, Any]:
     if not request.content:
         raise HTTPException(status_code=400, detail="content is required")
     message = await agents.send(agent_id=agent_id, role=request.role, content=request.content)
@@ -67,7 +72,7 @@ async def send_agent_message(
 @router.get("/agents/{agent_id}/messages")
 async def list_agent_messages(
     agent_id: str, limit: int | None = None, agents: AgentService = Depends(get_agent_service)
-) -> dict:
+) -> dict[str, Any]:
     messages = await agents.list_messages(agent_id, limit=limit)
     return {"messages": [msg.to_dict() for msg in messages]}
 
@@ -77,7 +82,7 @@ async def wakeup_agent(
     agent_id: str,
     request: AgentWakeupRequest,
     agents: AgentService = Depends(get_agent_service),
-) -> dict:
+) -> dict[str, Any]:
     message = await agents.wakeup(
         agent_id=agent_id,
         provider=request.provider,
@@ -88,7 +93,11 @@ async def wakeup_agent(
 
 
 @router.get("/agents/{agent_id}/events")
-async def stream_agent_events(agent_id: str, request: Request, services=Depends(get_services)) -> StreamingResponse:
+async def stream_agent_events(
+    agent_id: str,
+    request: Request,
+    services: AppServices = Depends(get_services),
+) -> StreamingResponse:
     bus: EventBus = services.message_bus
     queue: asyncio.Queue[Event] = asyncio.Queue()
 
@@ -105,7 +114,7 @@ async def stream_agent_events(agent_id: str, request: Request, services=Depends(
     bus.subscribe("agent.*", handler)
     bus.subscribe("dialogue.*", handler)
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         try:
             while True:
                 try:

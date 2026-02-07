@@ -35,12 +35,12 @@ def make_lparam(x: int, y: int) -> int:
 
 def get_vk(key: str) -> int:
     """获取虚拟键码"""
-    return VK_CODES.get(key.lower(), 0)
+    return int(VK_CODES.get(key.lower(), 0))
 
 
 def make_key_lparam(vk: int, down: bool = True) -> int:
     """创建键盘消息的 LPARAM"""
-    scan_code = MapVirtualKeyW(vk, 0)
+    scan_code = int(MapVirtualKeyW(vk, 0))
     repeat_count = 1
     extended = 0
     context = 0
