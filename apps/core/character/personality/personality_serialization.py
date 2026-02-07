@@ -2,9 +2,11 @@
 Personality serialization helpers.
 """
 
-from typing import Any
+from typing import Any, TypeVar
 
 from .traits import PersonalityTrait
+
+SerializationMixinT = TypeVar("SerializationMixinT", bound="SerializationMixin")
 
 
 class SerializationMixin:
@@ -33,13 +35,18 @@ class SerializationMixin:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "SerializationMixin":
+    def from_dict(cls: type[SerializationMixinT], data: dict[str, Any]) -> SerializationMixinT:
         """Deserialize from dictionary."""
-        traits = {}
-        for trait_name, value in data.get("traits", {}).items():
+        traits: dict[PersonalityTrait, float] = {}
+        raw_traits = data.get("traits", {})
+        if not isinstance(raw_traits, dict):
+            raw_traits = {}
+        for trait_name, value in raw_traits.items():
+            if not isinstance(trait_name, str) or not isinstance(value, (int, float)):
+                continue
             try:
                 trait = PersonalityTrait(trait_name)
-                traits[trait] = value
+                traits[trait] = float(value)
             except ValueError:
                 pass
 
@@ -56,7 +63,7 @@ class SerializationMixin:
         )
 
     @classmethod
-    def create_default(cls, name: str = "Cerise") -> "SerializationMixin":
+    def create_default(cls: type[SerializationMixinT], name: str = "Cerise") -> SerializationMixinT:
         """Create a default personality."""
         return cls(
             name=name,

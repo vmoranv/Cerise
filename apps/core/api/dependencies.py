@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import Depends, HTTPException, Request
 
 from ..ai import DialogueEngine
@@ -14,9 +16,9 @@ from .container import AppServices
 
 def get_services(request: Request) -> AppServices:
     services = getattr(request.app.state, "services", None)
-    if not services:
+    if services is None:
         raise HTTPException(status_code=500, detail="Services not initialized")
-    return services
+    return cast(AppServices, services)
 
 
 def get_dialogue_engine(services: AppServices = Depends(get_services)) -> DialogueEngine:

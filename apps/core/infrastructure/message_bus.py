@@ -6,6 +6,7 @@ import asyncio
 import fnmatch
 import logging
 from collections import defaultdict
+from typing import Any
 
 from .event_types import Event, EventHandler
 
@@ -23,13 +24,13 @@ class MessageBus:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not hasattr(self, "_initialized"):
             self._initialized = True
             self._handlers: dict[str, list[EventHandler]] = defaultdict(list)
             self._queue: asyncio.Queue[Event] = asyncio.Queue()
             self._running = False
-            self._task: asyncio.Task | None = None
+            self._task: asyncio.Task[None] | None = None
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         """Subscribe to an event type.
@@ -59,7 +60,7 @@ class MessageBus:
         except RuntimeError:
             asyncio.run(self.publish(event))
 
-    async def emit(self, event_type: str, data: dict | None = None, source: str = "") -> None:
+    async def emit(self, event_type: str, data: dict[str, Any] | None = None, source: str = "") -> None:
         """Convenience method to create and publish an event."""
         event = Event(type=event_type, data=data or {}, source=source)
         await self.publish(event)

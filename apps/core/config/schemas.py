@@ -4,6 +4,8 @@ Configuration Schemas
 Pydantic models for configuration validation.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -138,7 +140,7 @@ class ProviderConfig(BaseModel):
     type: str  # openai, claude, gemini, ollama
     name: str = ""
     enabled: bool = True
-    config: dict = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProvidersConfig(BaseModel):

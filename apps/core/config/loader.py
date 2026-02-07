@@ -15,6 +15,13 @@ from .providers_config_loader import ProvidersConfigLoaderMixin
 from .schemas import AppConfig, CharacterConfig, McpConfig, PluginsRegistry, ProvidersConfig, StarRegistry
 from .star_config_loader import StarConfigLoaderMixin
 
+__all__ = [
+    "ConfigLoader",
+    "get_config_loader",
+    "get_data_dir",
+    "ensure_data_dir",
+]
+
 
 class ConfigLoader(
     AppConfigLoaderMixin,

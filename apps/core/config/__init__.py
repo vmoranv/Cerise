@@ -5,6 +5,7 @@ External configuration management for Cerise.
 Data stored in ~/.cerise/
 """
 
+from .bootstrap import BootstrapReport, bootstrap_data_dir
 from .loader import ConfigLoader, ensure_data_dir, get_config_loader, get_data_dir
 from .schemas import (
     AIConfig,
@@ -37,6 +38,8 @@ __all__ = [
     "get_config_loader",
     "get_data_dir",
     "ensure_data_dir",
+    "bootstrap_data_dir",
+    "BootstrapReport",
     # Schemas
     "AppConfig",
     "ServerConfig",

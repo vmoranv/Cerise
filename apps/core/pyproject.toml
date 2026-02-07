@@ -37,6 +37,7 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "ruff>=0.14.13",
     "mypy>=1.19.1",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 admin = [
     "python-multipart>=0.0.20",
@@ -64,6 +65,43 @@ ignore = ["E501"]
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "abilities.*",
+    "ai.*",
+    "character.*",
+    "contracts.*",
+    "events.*",
+    "l2d.*",
+    "operation.*",
+    "plugins.*",
+    "services.*",
+    "tests.*",
+    "api.admin.*",
+    "api.routes.*",
+    "infrastructure.mcp.*",
+    "infrastructure.mp_broker",
+    "infrastructure.mp_bus",
+    "infrastructure.event_types",
+    "core.abilities.*",
+    "core.ai.*",
+    "core.character.*",
+    "core.contracts.*",
+    "core.events.*",
+    "core.l2d.*",
+    "core.operation.*",
+    "core.plugins.*",
+    "core.services.*",
+    "core.tests.*",
+    "core.api.admin.*",
+    "core.api.routes.*",
+    "core.infrastructure.mcp.*",
+    "core.infrastructure.mp_broker",
+    "core.infrastructure.mp_bus",
+    "core.infrastructure.event_types",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

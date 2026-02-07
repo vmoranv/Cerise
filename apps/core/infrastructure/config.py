@@ -23,7 +23,7 @@ class ConfigManager:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not hasattr(self, "_initialized"):
             self._initialized = True
             self._config = {}
@@ -42,7 +42,7 @@ class ConfigManager:
         self._config_paths.append(path)
         self._apply_env_overrides()
 
-    def _deep_merge(self, base: dict, override: dict) -> dict:
+    def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
         """Deep merge two dictionaries"""
         result = base.copy()
         for key, value in override.items():
@@ -64,15 +64,24 @@ class ConfigManager:
                 parts = key[len(prefix) :].lower().split("_")
                 self._set_nested(self._config, parts, value)
 
-    def _set_nested(self, config: dict, keys: list[str], value: str) -> None:
+    def _set_nested(self, config: dict[str, Any], keys: list[str], value: Any) -> None:
         """Set a nested configuration value"""
         for key in keys[:-1]:
-            config = config.setdefault(key, {})
+            next_value = config.setdefault(key, {})
+            if isinstance(next_value, dict):
+                config = next_value
+            else:
+                nested: dict[str, Any] = {}
+                config[key] = nested
+                config = nested
         # Try to parse as YAML for type conversion
-        try:
-            config[keys[-1]] = yaml.safe_load(value)
-        except yaml.YAMLError:
-            config[keys[-1]] = value
+        if isinstance(value, str):
+            try:
+                config[keys[-1]] = yaml.safe_load(value)
+            except yaml.YAMLError:
+                config[keys[-1]] = value
+            return
+        config[keys[-1]] = value
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation

@@ -5,6 +5,7 @@ Providers config loading helpers.
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -100,7 +101,7 @@ class ProvidersConfigLoaderMixin:
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(default.model_dump(), f, allow_unicode=True)
 
-    def _expand_env_vars(self, config: dict) -> None:
+    def _expand_env_vars(self, config: dict[str, Any]) -> None:
         """Expand ${VAR} in config values."""
         for key, value in config.items():
             if isinstance(value, str) and value.startswith("${") and value.endswith("}"):

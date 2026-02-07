@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.1.2-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.3-61dafb?style=flat-square&logo=react)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
 
@@ -101,54 +101,11 @@
 ### 前置要求
 
 - **Node.js** 20+ 和 **pnpm** 8+
-- **Python** 3.10+
+- **Python** 3.11+
 - **uv** (Python 包管理器) - `pip install uv`
 - **Git**
 
-### 方法 1: 一键启动（推荐）
-
-#### Windows
-```bash
-git clone https://github.com/your-repo/cerise.git
-cd cerise
-.\start.bat
-```
-
-选择 **1) 全部启动**，等待服务启动完成。
-
-#### Linux / macOS
-```bash
-git clone https://github.com/your-repo/cerise.git
-cd cerise
-chmod +x start.sh
-./start.sh
-```
-
-选择 **1. Start All**，等待服务启动完成。
-
-### 停止所有服务
-
-如果需要停止所有运行中的 Cerise 服务：
-
-#### Windows
-```bash
-.\stop.bat
-```
-
-#### Linux / macOS
-```bash
-chmod +x stop.sh
-./stop.sh
-```
-
-此脚本会：
-- 停止所有端口（8000, 8001, 3000, 3001）上的进程
-- 清理 Next.js 锁文件
-- 释放所有资源
-
-### 方法 2: 分步启动
-
-#### 1. 安装依赖
+### 安装依赖
 
 ```bash
 # 前端依赖
@@ -162,7 +119,16 @@ uv sync
 cd ../..
 ```
 
-#### 2. 配置环境
+### 初始化配置（Core）
+
+```bash
+cd apps/core
+uv run cerise init-config
+```
+
+默认会在 `~/.cerise/` 生成模板配置（若文件已存在则跳过）。
+
+### 配置环境
 
 **前端配置** (`apps/cerise_webui/.env.local`):
 ```env
@@ -170,7 +136,7 @@ NEXT_PUBLIC_CORE_API_URL=http://localhost:8000
 NEXT_PUBLIC_TTS_API_URL=http://localhost:8001
 ```
 
-**后端配置** (`apps/core/config.yaml`):
+**后端配置** (`~/.cerise/config.yaml`):
 ```yaml
 server:
   host: 0.0.0.0
@@ -179,17 +145,16 @@ server:
 ai:
   default_provider: openai
   default_model: gpt-4o
-  providers:
-    openai:
-      api_key: ${OPENAI_API_KEY}  # 设置环境变量
 ```
 
-#### 3. 启动服务
+Provider 连接建议写在 `~/.cerise/providers.yaml`（支持 `${ENV_VAR}`）。
+
+### 启动服务
 
 ```bash
 # 终端 1: Core API
 cd apps/core
-uv run python main.py
+uv run cerise
 
 # 终端 2: TTS Server (可选)
 cd apps/tts-server
@@ -200,7 +165,16 @@ cd apps/cerise_webui
 pnpm dev
 ```
 
-#### 4. 访问应用
+可选启动参数（Core API）：
+
+```bash
+cd apps/core
+uv run cerise run --host 127.0.0.1 --port 9000 --reload
+```
+
+环境变量覆盖：`CERISE_SERVER_HOST` / `CERISE_SERVER_PORT` / `CERISE_RELOAD` / `CERISE_LOG_LEVEL`
+
+### 访问应用
 
 打开浏览器访问: **http://localhost:3000**
 
@@ -254,8 +228,6 @@ Cerise/
 │       └── requirements.txt
 │
 ├── docs/                          # 📚 文档
-├── start.sh                       # Linux/Mac 启动脚本
-├── start.bat                      # Windows 启动脚本
 ├── package.json                   # 根配置
 ├── pnpm-workspace.yaml           # pnpm 工作区
 ├── FRONTEND_COMPLETE.md          # 前端完整文档
@@ -334,7 +306,7 @@ Cerise 支持 15+ AI 服务商：
 | Ollama | 本地 | 所有 Ollama 模型 |
 | LM Studio | 本地 | 所有本地模型 |
 
-配置方法见 [Provider 配置文档](docs/PROVIDERS.md)
+配置方法见 [Provider 配置文档](docs/specs/providers.md)
 
 ---
 
@@ -402,11 +374,6 @@ export function MyComponent() {
 如果遇到端口冲突错误（例如：`address already in use`、`EADDRINUSE`）：
 
 ```bash
-# 方法 1: 使用停止脚本（推荐）
-.\stop.bat          # Windows
-./stop.sh           # Linux/Mac
-
-# 方法 2: 手动停止
 # Windows - 查找并杀死进程
 netstat -ano | findstr :8000
 taskkill /PID <PID> /F
@@ -444,10 +411,6 @@ uv sync
 ```bash
 # 删除锁文件
 rm -f apps/cerise_webui/.next/dev/lock
-
-# 或使用停止脚本自动清理
-.\stop.bat          # Windows
-./stop.sh           # Linux/Mac
 ```
 
 ---

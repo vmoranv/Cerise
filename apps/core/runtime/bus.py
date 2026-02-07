@@ -5,6 +5,7 @@ Event bus factory for the runtime.
 from __future__ import annotations
 
 import logging
+from typing import Any, cast
 
 from ..config.schemas import BusConfig
 from ..infrastructure import EventBus, get_message_bus
@@ -25,7 +26,7 @@ def build_event_bus(config: BusConfig) -> EventBus:
             authkey=authkey,
             start_broker=config.start_broker,
         )
-        broker = manager.get_broker()
+        broker = cast(Any, manager).get_broker()
         inbound = broker.register()
         return MultiProcessMessageBus(broker, inbound, manager)
 

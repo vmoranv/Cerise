@@ -48,7 +48,7 @@ class EventBus(Protocol):
     def publish_sync(self, event: Event) -> None:
         """Publish an event synchronously."""
 
-    async def emit(self, event_type: str, data: dict | None = None, source: str = "") -> None:
+    async def emit(self, event_type: str, data: dict[str, Any] | None = None, source: str = "") -> None:
         """Create and publish an event."""
 
     async def start(self) -> None:
